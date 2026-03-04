@@ -98,11 +98,11 @@ function normalizeSpaces(sInp) {
           reC: /\/\//gm,
           reQ: /\\\"/gm,
           /* ^.*?"|".*?$|^.*?'|'.*?$  |^[\s\S]*?\x03\x04|\x01\x02[\s\S]*?$ */
-          re1: /(\x01\x02[\s\S]*?\x03\x04|\x0d[\s\S]*?\x0e|\x07\x08.*?$|".*?"|'.*?')|\s*(===|==|!==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/gm,
+          re1: /(\x01\x02[\s\S]*?\x03\x04|\x07\x08.*?$|".*?"|'.*?')|\s*(===|==|!==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/gm,
           re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/gm,
           reQ2: /\x0b\x0c/gm,
           reC2: /\x07\x08/gm,
-          reRe2: /_RE_\d+/gm, // /x0d([\S\s]+)x0e/ 
+          reRe2: /_RE_\d+/gm,  
           reBC2: /\x01\x02([\s\S]*?)\x03\x04/gm
         }
     }
@@ -114,13 +114,10 @@ function normalizeSpaces(sInp) {
                                 })
                  
       sOut = sOut.replace(reBC, "\x01\x02$1\x03\x04")   //маскируем блочные комментарии
-      //PrintLog("sOut = " + sOut)
-      //sOut = sOut.replace(reRe, "x0d$1x0e") 
       
       sOut = sOut.replace(reC, "\x07\x08")              // //...
       sOut = sOut.replace(reQ, "\x0b\x0c")              // ..\"..
       sOut = sOut.replace(re1, function (match1, match2, match3){ /* выравниваем пробелы */
-                                  //PrintLog(match2)
                                   if(match2){
                                       return match2
                                   } else {
@@ -137,8 +134,6 @@ function normalizeSpaces(sInp) {
       sOut = sOut.replace(reRe2, function (match){
                                      return placeholders[cnt++]
                                  }) 
-      //sOut = sOut.replace(reRe2,"/\/$1\//")
-      
     }
     return sOut
 }
