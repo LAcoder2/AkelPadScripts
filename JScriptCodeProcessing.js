@@ -30,10 +30,9 @@ var AP = AkelPad
 */
 // При повторном запуске останавливаем обработку событий 
 if (!stopEvents())
-    TestEvents()
+    startProcessing()
 var nModifiedLine, EventsOn // номер последней модифицированной строки, которая обрабатывается после перехода курсора в другую строку
-function TestEvents(){ 
-//    PrintLog("TestEvents")   
+function startProcessing(){ 
     nModifiedLine =  - 1
     startEvents(0x802/*AEN_SETFOCUS*/, OnSetFocus,
                 0x81C/*AEN_MODIFY*/, OnChangeModifySatus,
@@ -186,10 +185,10 @@ function OnTextChanging(lParam){
     
     switch (dwType){
       case 0x00000001: PrintLog("  Замена выделения "); IsInsert = true; break 
-      case 0x00000002: PrintLog("  Добавление текста"); break
-      case 0x00000004: PrintLog("  Установка текста"); break
-      case 0x00000008: PrintLog("  Потоковый ввод"); break
-      case 0x00000010: PrintLog("  Отправка AEM_SETWORDWRAP"); break
+      //case 0x00000002: PrintLog("  Добавление текста"); break
+      //case 0x00000004: PrintLog("  Установка текста"); break
+      //case 0x00000008: PrintLog("  Потоковый ввод"); break
+      //case 0x00000010: PrintLog("  Отправка AEM_SETWORDWRAP"); break
       //case 0x00000020: PrintLog("  Отмена действия"); break
       //case 0x00000040: PrintLog("  Повтор действия"); break
       //case 0x00000080: PrintLog("  Вырезание"); break
@@ -198,55 +197,49 @@ function OnTextChanging(lParam){
       //case 0x00000400: PrintLog("  Нажатие VK_BACK"); break
       //case 0x00000800: PrintLog("  Нажатие VK_DELETE"); break
       //case 0x00001000: PrintLog("  Удаление текста при перетаскивании"); break
-      case 0x00002000: PrintLog("  Вставка текста при сбросе"); break
+      //case 0x00002000: PrintLog("  Вставка текста при сбросе"); break
       //case 0x00004000: PrintLog("  Отмена/Повтор для колоночного текста сгруппирована из действий на одной строке."); break 
     }  
 }
 
 function OnTextInsertBegin(lParam){/*PrintLog("Перед вставкой");*/}
 function OnTextInsertEnd(lParam){              //111fszzfsz g
-    PrintLog("После вставки")                                       //!!!!!!!!!!!!!!!!!!1  
+    //PrintLog("После вставки")                                       //!!!!!!!!!!!!!!!!!!1  
     //if (!IsInsert) {return;} else IsInsert = false
-    var nCurSelStart = AkelPad.GetSelStart()
 //    if (sPrevSelText.length)
 //        PrintLog("  Вы заменили \"" + sPrevSelText + "\" на \"" + sInsText +"\"")
 //    else       
 //        PrintLog("  Вы вставили \"" + sInsText +"\"") 
-    var sTmp = AkelPad.GetTextRange(nPrevSelStart, nCurSelStart)
-    if (!/\S/.test(sTmp)) return
-        
-    var nPrevLine = getLineFromChar(nPrevSelStart)
-    var nCurLine = getLineFromChar(nCurSelStart)
-    if(nPrevLine !== nCurLine){ 
-        nModifiedLine = -1
-        PauseEventsFlag = true
-        StopRedraw()
-        
-        var nStartPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nPrevLine, 0)
-        var nEndPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nCurLine, 0) + 2
-        
-        AkelPad.SetSel(nStartPos, nEndPos)           // Получаем строки, захватываемые вставленным текстом) за исключением 
-        var sInsText = AkelPad.GetSelText()          // последней, в которую устанавливается курсор после вставки
-        var nPrevLen = sInsText.length
-        
-        sInsText = normalizeSpaces(sInsText)         // Обрабатываем этот текст
-        var sIndent = Space(nPrevSelStart - nStartPos)
-        var sInsText = addIndents(sInsText, sIndent) //+ sIndent
-                
-        AkelPad.ReplaceSel(sInsText)                 // Вставляем обратно в редактор
-        
-        nCurSelStart += sInsText.length - nPrevLen   // Восстанавливаем положение курсора с учетом изменившейся длины нормализованного текста
-        AkelPad.SetSel(nCurSelStart, nCurSelStart)
-        
-        StartRedraw()
-        PauseEventsFlag = false
-        
-//        PrintLog("nPrevSelStart = " + nPrevSelStart, 2, ".js")
-//        PrintLog("nStartPos = " + nStartPos)
-//        PrintLog("|" + Space(nPrevSelStart - nStartPos) + "|")
-//        PrintLog("nPrevLine = " + nPrevLine)
-//        PrintLog(normalizeSpaces(sInsText))
-    }
+//    var nCurSelStart = AkelPad.GetSelStart()
+//    var sTmp = AkelPad.GetTextRange(nPrevSelStart, nCurSelStart)
+//    if (!/\S/.test(sTmp)) return
+//        
+//    var nPrevLine = getLineFromChar(nPrevSelStart)
+//    var nCurLine = getLineFromChar(nCurSelStart)
+//    if(nPrevLine !== nCurLine){ 
+//        //nModifiedLine = -1
+//        PauseEventsFlag = true
+//        StopRedraw()
+//        
+//        var nStartPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nPrevLine, 0)
+//        var nEndPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nCurLine, 0) + 2
+//        
+//        AkelPad.SetSel(nStartPos, nEndPos)           // Получаем строки, захватываемые вставленным текстом) за исключением 
+//        var sInsText = AkelPad.GetSelText()          // последней, в которую устанавливается курсор после вставки
+//        var nPrevLen = sInsText.length
+//        
+//        sInsText = normalizeSpaces(sInsText)         // нормализуем пробелы
+//        var sIndent = Space(nPrevSelStart - nStartPos)
+//        var sInsText = addIndents(sInsText, sIndent) // добавляем отступы
+//                
+//        AkelPad.ReplaceSel(sInsText)                 // Вставляем в редактор обработанный текст
+//        
+//        nCurSelStart += sInsText.length - nPrevLen   // Восстанавливаем положение курсора с учетом изменившейся длины нормализованного текста
+//        AkelPad.SetSel(nCurSelStart, nCurSelStart)
+//        
+//        StartRedraw()
+//        PauseEventsFlag = false
+//    }
 }
 var spaceData
 function Space(cnt){
@@ -275,8 +268,43 @@ function OnTextDeleteEnd(lParam){
 
 function OnTextChanged(lParam){
     PrintLog("После изменения \n\n")
-    var nLine = getLineFromChar(AkelPad.GetSelStart()) 
-    if (nModifiedLine !== nLine) nModifiedLine = nLine   //запоминаем модифицированную строку для ее постобработки fff
+    var nCurSelStart = AkelPad.GetSelStart()
+    var nCurLine = getLineFromChar(nCurSelStart) 
+    if (nModifiedLine !== nCurLine) nModifiedLine = nCurLine   //запоминаем модифицированную строку для ее постобработки fff
+    
+    if (IsInsert){
+        IsInsert = false
+        PrintLog("Была вставка!")
+        var nPrevLine = getLineFromChar(nPrevSelStart)
+        
+        if(nPrevLine !== nCurLine){
+            //Проверяем, если были вставлены только пробельные символы, то не обрабатываем их
+            if (!/\S\S\S/.test(AkelPad.GetTextRange(nPrevSelStart, nCurSelStart))) return 
+            PrintLog("Вставлены не пробелы!!")
+            //nModifiedLine = -1
+            PauseEventsFlag = true
+            StopRedraw()
+            
+            var nStartPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nPrevLine, 0)
+            var nEndPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nCurLine, 0) + 2
+            
+            AkelPad.SetSel(nStartPos, nEndPos)           // Получаем строки, захватываемые вставленным текстом) за исключением 
+            var sInsText = AkelPad.GetSelText()          // последней, в которую устанавливается курсор после вставки
+            var nPrevLen = sInsText.length
+            
+            sInsText = normalizeSpaces(sInsText)         // нормализуем пробелы
+            var sIndent = Space(nPrevSelStart - nStartPos)
+            var sInsText = addIndents(sInsText, sIndent) // добавляем отступы
+                    
+            AkelPad.ReplaceSel(sInsText)                 // Вставляем в редактор обработанный текст
+            
+            nCurSelStart += sInsText.length - nPrevLen   // Восстанавливаем положение курсора с учетом изменившейся длины нормализованного текста
+            AkelPad.SetSel(nCurSelStart, nCurSelStart)
+            
+            StartRedraw()
+            PauseEventsFlag = false
+        }
+    }
 }
 
 // ---------------------------------------------------------
@@ -285,3 +313,26 @@ function OnTextChanged(lParam){
 function getLineFromChar(nPos){
     return AkelPad.SendMessage(hWndEdit, 1078 /*EM_EXLINEFROMCHAR*/, 0, nPos)
 }
+//void DoEvents()
+//{
+//    MSG msg;
+//    BOOL result;
+//    while ( ::PeekMessage(&msg, NULL, 0, 0, PM_NOREMOVE ) )
+//    {
+//        result = ::GetMessage(&msg, NULL, 0, 0);
+//        if (result == 0) // WM_QUIT
+//        {
+//            ::PostQuitMessage(msg.wParam);
+//            break;
+//        }
+//        else if (result == -1)
+//        {
+//             // Handle errors/exit application, etc.
+//        }
+//        Else
+//        {
+//            ::TranslateMessage(&msg);
+//            :: DispatchMessage(&msg);
+//        }
+//    }
+//}

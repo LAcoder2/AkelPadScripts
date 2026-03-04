@@ -4,7 +4,7 @@ AkelPad.Include("log.js")
 var hMainWnd=AkelPad.GetMainWnd()
 var hWndEdit = AkelPad.GetEditWnd()
 nTabSize = getTabSize()
-sTab = Space(nTabSize)
+sTab = Space(nTabSize)            
 
 function main() {    
     var selStart = AkelPad.GetSelStart()

@@ -149,8 +149,8 @@ function OnTextChanging(lParam){
         #define AETCT_DRAGDELETE        0x00001000  //Удаление текста при перетаскивании.
         #define AETCT_DROPINSERT        0x00002000  //Вставка текста при сбросе. 
         #define AETCT_COLUMNGROUP       0x00004000  //Отмена/Повтор для колоночного текста сгруппирована из действий на одной строке.
-*/
-    
+*/                   
+    PrintLog("dwType = 0x" + (dwType).toString(16))
     switch (dwType){
       case 0x00000001: 
           PrintLog("  Замена выделения ")
