@@ -1,4 +1,4 @@
-//CommentsAdd2.js
+п»ї//CommentsAdd2.js
 with (AkelPad){
 //    include("log.js")
     Include("Coder.js")
@@ -12,7 +12,7 @@ with (AkelPad){
     
     var comms = GetSyntaxComments()
     if (comms === null || comms.length === 0){
-        WScript.Echo("В синтаксической теме текущей вкладки отсутствуют обозначения комментариев!")
+        WScript.Echo("Р’ СЃРёРЅС‚Р°РєСЃРёС‡РµСЃРєРѕР№ С‚РµРјРµ С‚РµРєСѓС‰РµР№ РІРєР»Р°РґРєРё РѕС‚СЃСѓС‚СЃС‚РІСѓСЋС‚ РѕР±РѕР·РЅР°С‡РµРЅРёСЏ РєРѕРјРјРµРЅС‚Р°СЂРёРµРІ!")
         WScript.Quit()
     }
       
@@ -43,7 +43,7 @@ with (AkelPad){
     }
 }
 
-//Получить начало линии из позиции
+//РџРѕР»СѓС‡РёС‚СЊ РЅР°С‡Р°Р»Рѕ Р»РёРЅРёРё РёР· РїРѕР·РёС†РёРё
 function getLineStartPos(hWnd, nPos){    
     var nLine = AkelPad.SendMessage(hWnd, 1078 /*EM_EXLINEFROMCHAR*/, 0, nPos)
     return AkelPad.SendMessage(hWnd, 187 /*EM_LINEINDEX*/, nLine, 0)
