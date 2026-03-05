@@ -1,6 +1,6 @@
-Option Explicit
+п»їOption Explicit
 
-' Запуск в VBS:
+' Р—Р°РїСѓСЃРє РІ VBS:
 'Set Args = WScript.Arguments
 'If Args.Count < 3 Then
 '    WScript.Echo "Usage: script.vbs ""FolderPath"" ""*.ext *.ext2"""
@@ -10,26 +10,26 @@ Option Explicit
 
 Public Stream, initFlg
 
-main() ' запус в VBS
+main() ' Р·Р°РїСѓСЃ РІ VBS
 
 Private Sub main()
     Dim SrcPath, DstPath, Mask, Dlm, FldrName, oShell, oFolder
     
     Set oShell = CreateObject("shell.application")
     
-    Set oFolder = oShell.BrowseForFolder(0, "Выберите папку из которой нужно собрать текстовые файлы", &H8090, 0)
-    If oFolder Is Nothing Then MsgBox "Папка источника не выбрана! Скрипт будет завершен.": Exit Sub
+    Set oFolder = oShell.BrowseForFolder(0, "Р’С‹Р±РµСЂРёС‚Рµ РїР°РїРєСѓ РёР· РєРѕС‚РѕСЂРѕР№ РЅСѓР¶РЅРѕ СЃРѕР±СЂР°С‚СЊ С‚РµРєСЃС‚РѕРІС‹Рµ С„Р°Р№Р»С‹", &H8090, 0)
+    If oFolder Is Nothing Then MsgBox "РџР°РїРєР° РёСЃС‚РѕС‡РЅРёРєР° РЅРµ РІС‹Р±СЂР°РЅР°! РЎРєСЂРёРїС‚ Р±СѓРґРµС‚ Р·Р°РІРµСЂС€РµРЅ.": Exit Sub
     SrcPath = oFolder.Self.Path
     
-    Set oFolder = oShell.BrowseForFolder(0, "Выберите папку в которую будут записаны файлы с собранной информацией", &H8090, 0)
-    If oFolder Is Nothing Then MsgBox "Папка назначения не выбрана! Скрипт будет завершен.": Exit Sub
+    Set oFolder = oShell.BrowseForFolder(0, "Р’С‹Р±РµСЂРёС‚Рµ РїР°РїРєСѓ РІ РєРѕС‚РѕСЂСѓСЋ Р±СѓРґСѓС‚ Р·Р°РїРёСЃР°РЅС‹ С„Р°Р№Р»С‹ СЃ СЃРѕР±СЂР°РЅРЅРѕР№ РёРЅС„РѕСЂРјР°С†РёРµР№", &H8090, 0)
+    If oFolder Is Nothing Then MsgBox "РџР°РїРєР° РЅР°Р·РЅР°С‡РµРЅРёСЏ РЅРµ РІС‹Р±СЂР°РЅР°! РЎРєСЂРёРїС‚ Р±СѓРґРµС‚ Р·Р°РІРµСЂС€РµРЅ.": Exit Sub
     DstPath = oFolder.Self.Path 'SrcPath & "\tmp"
     
-    Mask = InputBox("Введите маску для отбора собираемых файлов по маске", , "*.js;*.vbs;*.txt")            '"*.js;*.vbs"
-    ' Заменяем пробелы в масках на ; для корректной работы Filter (если требуется)
+    Mask = InputBox("Р’РІРµРґРёС‚Рµ РјР°СЃРєСѓ РґР»СЏ РѕС‚Р±РѕСЂР° СЃРѕР±РёСЂР°РµРјС‹С… С„Р°Р№Р»РѕРІ РїРѕ РјР°СЃРєРµ", , "*.js;*.vbs;*.txt")            '"*.js;*.vbs"
+    ' Р—Р°РјРµРЅСЏРµРј РїСЂРѕР±РµР»С‹ РІ РјР°СЃРєР°С… РЅР° ; РґР»СЏ РєРѕСЂСЂРµРєС‚РЅРѕР№ СЂР°Р±РѕС‚С‹ Filter (РµСЃР»Рё С‚СЂРµР±СѓРµС‚СЃСЏ)
 '    Mask = Replace(Mask, " ", ";")
 
-    Dlm = InputBox("Введите разделитель через который будут сшиваться собираетмые файлы", , "-|#|#|#|#|-")  'vbCrLf & "-|#|#|#|#|-" & vbCrLf
+    Dlm = InputBox("Р’РІРµРґРёС‚Рµ СЂР°Р·РґРµР»РёС‚РµР»СЊ С‡РµСЂРµР· РєРѕС‚РѕСЂС‹Р№ Р±СѓРґСѓС‚ СЃС€РёРІР°С‚СЊСЃСЏ СЃРѕР±РёСЂР°РµС‚РјС‹Рµ С„Р°Р№Р»С‹", , "-|#|#|#|#|-")  'vbCrLf & "-|#|#|#|#|-" & vbCrLf
     If Len(Dlm) Then Dlm = vbCrLf & Dlm & vbCrLf
     
     MergeTextFiles SrcPath, Mask, Dlm, DstPath
@@ -42,7 +42,7 @@ End Sub
 '                  "F:\PortableProgs\AkelPadPortable\App\AkelPadx64\AkelFiles\Plugs\Scripts\tmp\tmp"
 'End Sub
 
-'Основная процедура
+'РћСЃРЅРѕРІРЅР°СЏ РїСЂРѕС†РµРґСѓСЂР°
 Private Sub MergeTextFiles(SrcPath, Mask, Dlm, DstPath)
     Dim FSO 'As FileSystemObject
     Set FSO = CreateObject("Scripting.FileSystemObject")
@@ -50,17 +50,17 @@ Private Sub MergeTextFiles(SrcPath, Mask, Dlm, DstPath)
     Dim StmA: Set StmA = CreateObject("ADODB.Stream")
     With StmA
       .Mode = 3: .Open
-      .Charset = "x-ansi": .WriteText " " 'Для блокировки записи UTF16-BOM
-      .Position = 0: .Charset = "Unicode" 'Приходится записывать в начале один пробел, и ставить курсор на 1
+      .Charset = "x-ansi": .WriteText " " 'Р”Р»СЏ Р±Р»РѕРєРёСЂРѕРІРєРё Р·Р°РїРёСЃРё UTF16-BOM
+      .Position = 0: .Charset = "Unicode" 'РџСЂРёС…РѕРґРёС‚СЃСЏ Р·Р°РїРёСЃС‹РІР°С‚СЊ РІ РЅР°С‡Р°Р»Рµ РѕРґРёРЅ РїСЂРѕР±РµР», Рё СЃС‚Р°РІРёС‚СЊ РєСѓСЂСЃРѕСЂ РЅР° 1
       .Position = 1
     End With
     Dim StmU8: Set StmU8 = CreateObject("ADODB.Stream")
     With StmU8
       .Mode = 3: .Open: .Charset = "UTF-8"
-      .WriteText " ": .Position = 3 'Для записи UTF8-BOM
+      .WriteText " ": .Position = 3 'Р”Р»СЏ Р·Р°РїРёСЃРё UTF8-BOM
     End With
     
-    ' Получаем объект папки (абсолютный путь)
+    ' РџРѕР»СѓС‡Р°РµРј РѕР±СЉРµРєС‚ РїР°РїРєРё (Р°Р±СЃРѕР»СЋС‚РЅС‹Р№ РїСѓС‚СЊ)
     Dim Folder: Set Folder = Shell.Namespace(SrcPath) 'FSO.GetAbsolutePathName(SrcPath))
     If Folder Is Nothing Then Exit Sub 'WScript.Quit
     
@@ -75,39 +75,39 @@ Private Sub MergeTextFiles(SrcPath, Mask, Dlm, DstPath)
     Dim DlmU8: DlmU8 = ToUTF8(Dlm)
     Dim DlmA: DlmA = ToANSI(Dlm)
     
-    ' Перебираем отфильтрованные файлы
+    ' РџРµСЂРµР±РёСЂР°РµРј РѕС‚С„РёР»СЊС‚СЂРѕРІР°РЅРЅС‹Рµ С„Р°Р№Р»С‹
     Dim posU8, posA, File 'As folderitem2
     
     For Each File In Items
-        ' Читаем файл как текст (ANSI по умолчанию в FSO)
+        ' Р§РёС‚Р°РµРј С„Р°Р№Р» РєР°Рє С‚РµРєСЃС‚ (ANSI РїРѕ СѓРјРѕР»С‡Р°РЅРёСЋ РІ FSO)
         Dim ts 'As TextStream
         Set ts = FSO.OpenTextFile(File.Path, 1, False, -1)
         Dim sTmp: sTmp = ts.ReadAll()
         ts.Close
         Dim fName: fName = File.Name & Chr(13) & Chr(10) 'vbCrLf
         
-        If InStrB(1, LeftB(sTmp, 10), nullChar) Then  'если файл в UTF16
+        If InStrB(1, LeftB(sTmp, 10), nullChar) Then  'РµСЃР»Рё С„Р°Р№Р» РІ UTF16
             With StmU8
-              SelectCharset StmU8, "UTF-8"            'переключаем в режим UTF-8
+              SelectCharset StmU8, "UTF-8"            'РїРµСЂРµРєР»СЋС‡Р°РµРј РІ СЂРµР¶РёРј UTF-8
               .WriteText fName
-              If AscW(sTmp) = utf16BOM Then           'если UTF16-BOM
+              If AscW(sTmp) = utf16BOM Then           'РµСЃР»Рё UTF16-BOM
                   .WriteText Mid(sTmp, 2)
               Else
                   .WriteText sTmp
               End If
               .WriteText Dlm
             End With
-        ElseIf InStrB(1, LeftB(sTmp, 3), utf8BOM) Then 'если UTF8
+        ElseIf InStrB(1, LeftB(sTmp, 3), utf8BOM) Then 'РµСЃР»Рё UTF8
             With StmU8
               SelectCharset StmU8, "UTF-8"
               .WriteText fName
               
-              SelectCharset StmU8, "Unicode"          'переключаем в режим UTF-16
-              .WriteText MidB(sTmp, 4)                'записываем с пропуском BOM
+              SelectCharset StmU8, "Unicode"          'РїРµСЂРµРєР»СЋС‡Р°РµРј РІ СЂРµР¶РёРј UTF-16
+              .WriteText MidB(sTmp, 4)                'Р·Р°РїРёСЃС‹РІР°РµРј СЃ РїСЂРѕРїСѓСЃРєРѕРј BOM
               .WriteText DlmU8
             End With
-        Else                                          'если ANSI
-            'Здесь можно добавить обработку UTF8 без BOM и прочие форматы
+        Else                                          'РµСЃР»Рё ANSI
+            'Р—РґРµСЃСЊ РјРѕР¶РЅРѕ РґРѕР±Р°РІРёС‚СЊ РѕР±СЂР°Р±РѕС‚РєСѓ UTF8 Р±РµР· BOM Рё РїСЂРѕС‡РёРµ С„РѕСЂРјР°С‚С‹
             Dim pos
             With StmA
               SelectCharset StmA, "x-ansi"
@@ -146,7 +146,7 @@ Function GetFolderName(FldrPath)
     GetFolderName = Mid(FldrPath, pos + 1)
 End Function
 Private Sub TestToANSI()
-    Dim s: s = "Какая-то строка!"
+    Dim s: s = "РљР°РєР°СЏ-С‚Рѕ СЃС‚СЂРѕРєР°!"
     Dim s2: s2 = ToANSI(s)
 '    Debug.Print StrConv(s2, vbUnicode)
 End Sub
@@ -182,7 +182,7 @@ Function FromAnsi(ansiText)
       .WriteText ansiText
       .Position = 0
       .Charset = "x-ansi"
-      .Position = 2 'Пропускаем Utf16-BOM (FF FE)
+      .Position = 2 'РџСЂРѕРїСѓСЃРєР°РµРј Utf16-BOM (FF FE)
       FromAnsi = .ReadText
       .Close
     End With
@@ -225,7 +225,7 @@ Function FromUTF8(u8Text)
       .Close
     End With
 End Function
-'Конвертирует строку в массив байтов
+'РљРѕРЅРІРµСЂС‚РёСЂСѓРµС‚ СЃС‚СЂРѕРєСѓ РІ РјР°СЃСЃРёРІ Р±Р°Р№С‚РѕРІ
 Function StringToBytes(Text)
     If initFlg Then
     Else
