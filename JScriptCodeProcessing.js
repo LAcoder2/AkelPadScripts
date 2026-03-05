@@ -316,6 +316,7 @@ function OnTextChanged(lParam){
 function getLineFromChar(nPos){
     return AkelPad.SendMessage(hWndEdit, 1078 /*EM_EXLINEFROMCHAR*/, 0, nPos)
 }
+//Аналог Space() в VBS. Получение строки, заданной длины, заполненной пробелами
 var spaceData
 function Space(cnt){
     if (!spaceData){

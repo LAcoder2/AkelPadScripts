@@ -62,6 +62,7 @@ function addIndents(sInp, sIndent){
     if(!re_rn) re_rn = /([\r\n]+)/gm
     return sInp.replace(re_rn, "$1" + sIndent)
 }
+//Аналог Space() в VBS. Получение строки, заданной длины, заполненной пробелами
 var spaceData
 function Space(cnt){
     if (!spaceData){
@@ -107,8 +108,7 @@ function normalizeSpaces(sInp) {
     }
     var placeholders = [], counter = 0
     with(normalizeSpacesData){
-      var sOut
-      sOut = sInp.replace(reBC, "\x01\x02$1\x03\x04")
+      var sOut = sInp.replace(reBC, "\x01\x02$1\x03\x04")
       sOut = sOut.replace(reRE, function (unuse, match1, match2){
                                     placeholders[counter] = match2
                                     return match1 + "_PH_" + counter++
