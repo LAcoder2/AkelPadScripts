@@ -95,7 +95,7 @@ function startProcessing(){
 // ---------------------------------------------------------
 // Функции - обработчики событий
 // ---------------------------------------------------------
-var nPrevSelStart, nPrevSelEnd, sPrevSelText, IsInsert//, nCurrentLine
+var nPrevSelStart, nPrevSelEnd, sPrevSelText, IsInsert, IsTabPressed//, nCurrentLine
 
 function OnSetFocus(lParam){
     //PrintLog("OnSetFocus") 
@@ -113,7 +113,15 @@ function OnSetFocus(lParam){
 //    if (hSubClassFrame) hSubClassFrame = AkelPad.WindowSubClass(3/*WSC_FRAMEPROC*/, EditCallback, WM_NOTIFY)     
 }
 function OnChangeModifySatus(lParam) {/*PrintLog("AEN_MODIFY");*/} 
-function OnSelChanging(lParam){/*PrintLog("Начало выделения");*/}
+function OnSelChanging(lParam){
+    /*PrintLog("Начало выделения");*/
+    if (oSys.Call("user32::GetAsyncKeyState", 9)) {
+        if (!IsTabPressed){
+            IsTabPressed = true
+            PrintLog("Нажата клавиша Tab!")
+        }  
+    }
+}
 var sLine2
 function OnSelChanged(lParam){
     //PrintLog("Окончание выделения")
@@ -271,6 +279,11 @@ function OnTextChanged(lParam){
     var nCurSelStart = AkelPad.GetSelStart()
     var nCurLine = getLineFromChar(nCurSelStart) 
     if (nModifiedLine !== nCurLine) nModifiedLine = nCurLine   //запоминаем модифицированную строку для ее постобработки fff
+    
+    if (IsTabPressed){
+        IsTabPressed = false
+        return 
+    }
     
     if (IsInsert){
         IsInsert = false

@@ -2,7 +2,7 @@
 //var hWndEdit = AkelPad.GetEditWnd()
 AkelPad.Include("WinEvents.js")
 AkelPad.Include("Coder.js")
-
+var oSys=AkelPad.SystemFunction()
 /* Уведомления AkelEdit (0x702-0x836 1794-2102)
 //Уведомления об ошибках
 //    #define AEN_ERRSPACE              (WM_USER + 1001)  //WScript.Echo(0x7E9)
