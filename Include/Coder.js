@@ -25,7 +25,7 @@ function GetSyntaxComments() {
     if (pos > -1) {} else return null
     pos+=7
     
-    pos = sContent.indexOf("\"", pos)+1       // Извлекаем строки в кавычках.
+    pos = sContent.indexOf("\"", pos) + 1       // Извлекаем строки в кавычках.
     var pos2 = sContent.indexOf("\"", pos+1)
     
     var arRes=[]
@@ -93,47 +93,46 @@ var normalizeSpacesData
 function normalizeSpaces(sInp) {
     if(!normalizeSpacesData){
         normalizeSpacesData = {
-          reBC: /\/\*([\s\S]*?)\*\//gm,
-          reRe: /\/[\s\S]+\//gm,
-          reC: /\/\//gm,
-          reQ: /\\\"/gm,
-          /* ^.*?"|".*?$|^.*?'|'.*?$  |^[\s\S]*?\x03\x04|\x01\x02[\s\S]*?$ */
-          re1: /(\x01\x02[\s\S]*?\x03\x04|\x07\x08.*?$|".*?"|'.*?')|\s*(===|==|!==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/gm,
-          re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/gm,
-          reQ2: /\x0b\x0c/gm,
-          reC2: /\x07\x08/gm,
-          reRe2: /_RE_\d+/gm,  
-          reBC2: /\x01\x02([\s\S]*?)\x03\x04/gm
+            reBC: /\/\*([\s\S]*?)\*\//gm,
+            reRE: /(\W)(\/[^\n\r]*[^\\]\/)(?=[gmi]*\W)/gm,
+            reC: /\/\//gm,
+            reQ: /\\\"/gm,
+            re1: /(\x01\x02[\s\S]*?\x03\x04|\x07\x08.*?$|".*?"|'.*?')|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/gm,
+            re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/gm,
+            reQ2: /\x0b\x0c/gm,
+            reC2: /\x07\x08/gm,                                                   
+            reRE2: /_PH_\d+/gm,
+            reBC2: /\x01\x02([\s\S]*?)\x03\x04/gm
         }
     }
-    var sOut, placeholders = Array(10), cnt = 0
+    var placeholders = [], counter = 0
     with(normalizeSpacesData){
-      sOut = sInp.replace(reRe, function (match){  /* маскируем регекспы */
-                                    placeholders[cnt] = match
-                                    return "_RE_" + cnt++            
-                                })
-                 
-      sOut = sOut.replace(reBC, "\x01\x02$1\x03\x04")   //маскируем блочные комментарии
+      var sOut
+      sOut = sInp.replace(reBC, "\x01\x02$1\x03\x04")
+      sOut = sOut.replace(reRE, function (unuse, match1, match2){
+                                    placeholders[counter] = match2
+                                    return match1 + "_PH_" + counter++
+                                }
+                         )
+      sOut = sOut.replace(reC, "\x07\x08")        // //...
+      sOut = sOut.replace(reQ, "\x0b\x0c")               // ..\"..
       
-      sOut = sOut.replace(reC, "\x07\x08")              // //...
-      sOut = sOut.replace(reQ, "\x0b\x0c")              // ..\"..
-      sOut = sOut.replace(re1, function (match1, match2, match3){ /* выравниваем пробелы */
+      sOut = sOut.replace(re1, function (match1, match2, match3){
                                   if(match2){
                                       return match2
                                   } else {
                                       return " " + match3 + " "
                                   }
-                          })
-      sOut = sOut.replace(re2, "$1 $2 $3 $4 ")          // (..)_(?)_(..)_(:)_..
+                         })
+      sOut = sOut.replace(re2, "$1 $2 $3 $4 ") // (..)_(?)_(..)_(:)_..
           
-      sOut = sOut.replace(reQ2, "\\\"")                 //убираем все маскировки
+      sOut = sOut.replace(reQ2, "\\\"")
       sOut = sOut.replace(reC2, "\/\/")
+      counter = 0
+      sOut = sOut.replace(reRE2, function (match){
+                                     return placeholders[counter++]
+                         })
       sOut = sOut.replace(reBC2, "\/\*$1\*\/")
-      //PrintLog("sOut = " + sOut) 
-      cnt = 0
-      sOut = sOut.replace(reRe2, function (match){
-                                     return placeholders[cnt++]
-                                 }) 
     }
     return sOut
 }

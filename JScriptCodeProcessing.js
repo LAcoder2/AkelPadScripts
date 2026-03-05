@@ -164,6 +164,7 @@ function OnSelChanged(lParam){
             }
         }catch(e){
             PrintLog(e.description)
+            StartRedraw()
         }                                     
     }
 }
@@ -282,7 +283,7 @@ function OnTextChanged(lParam){
                 if (!/\S\S\S/.test(AkelPad.GetTextRange(nPrevSelStart, nCurSelStart))) return 
                 PauseEventsFlag = true
                 StopRedraw()
-                
+                //var re = new RegExp("^(?!\\s{16})\\s{1,15}");
                 var nStartPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nPrevLine, 0)
                 var nEndPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nCurLine, 0) + 1
                 
@@ -305,6 +306,7 @@ function OnTextChanged(lParam){
         }
     }catch(e){
         PrintLog(e.description)
+        StartRedraw()
     }
 }
 

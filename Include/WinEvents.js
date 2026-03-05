@@ -15,11 +15,11 @@ var PauseEventsFlag
 function stopEvents(){
     var hScript = AkelPad.ScriptHandle(WScript.ScriptName, 3 /*SH_FINDSCRIPT*/)
     if (AkelPad.ScriptHandle(hScript, 13 /*SH_GETMESSAGELOOP*/)){                   // Скрипт уже работает.      
-        PrintLog("Останавливаем очередь сообщений")                                 // Логируем и закрываем.
+        //PrintLog("Останавливаем очередь сообщений")                                 // Логируем и закрываем.
         AkelPad.ScriptHandle(hScript, 33 /*SH_CLOSESCRIPT*/)
         // Повторно запущенный скрипт останавливает очередь сообщений в предыдущей запущенной копии и останавливается сам)
         if (hScript !== AkelPad.ScriptHandle(0, 2 /*SH_THISSCRIPT*/)){
-            PrintLog("Остановка очереди сообщений из другой копии скрипта")
+            //PrintLog("Остановка очереди сообщений из другой копии скрипта")
         }
         if (hSubClassFrame) AkelPad.WindowUnsubClass(3); hSubClassFrame = 0
         if (hSubClassMain) AkelPad.WindowUnsubClass(1); hSubClassMain = 0
@@ -29,27 +29,27 @@ function stopEvents(){
 }
 
 function startEvents(){
-    PrintLog("startEvents")
+    //PrintLog("startEvents")
     //PauseEventsFlag = false
     EventPool = Array(2200)       //инициализируем массив функций-событий      
     for (var i = 0; i < arguments.length; i += 2){     
         EventPool[arguments[i]] = arguments[i+1]    
     }
     
-    PrintLog("Запуск скрипта. Начинаем подклассирование...")
+    //PrintLog("Запуск скрипта. Начинаем подклассирование...")
     //Подклассируем ГЛАВНОЕ окно (для режима SDI и глобальных событий)
     hSubClassMain = AkelPad.WindowSubClass(1/*WSC_MAINPROC*/, MainCallback, WM_NOTIFY)
-    if (hSubClassMain)
+    /*if (hSubClassMain)
         PrintLog("Успешно: MainCallback подключен (WSC_MAINPROC)")         
     else
-        PrintLog("Ошибка: MainCallback не подключен")
+        PrintLog("Ошибка: MainCallback не подключен")*/
     
     //Подклассируем Фрейм/окно (для режимов MDI/PMDI)
     hSubClassFrame = AkelPad.WindowSubClass(3/*WSC_FRAMEPROC*/, EditCallback, WM_NOTIFY)  
-    if (hSubClassFrame)
+    /*if (hSubClassFrame)
         PrintLog("Успешно: EditCallback подключен (WSC_FRAMEPROC)")
     else        
-        PrintLog("Ошибка: EditCallback не подключен")
+        PrintLog("Ошибка: EditCallback не подключен")*/
     
     if (hSubClassMain){
         AkelPad.ScriptNoMutex()               // Разрешаем работу других скриптов и разблокируем поток d _
