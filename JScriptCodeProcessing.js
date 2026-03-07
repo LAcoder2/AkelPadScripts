@@ -95,7 +95,7 @@ function startProcessing(){
 // ---------------------------------------------------------
 // Функции - обработчики событий
 // ---------------------------------------------------------
-var nPrevSelStart, nPrevSelEnd, sPrevSelText, IsInsert, IsTabPressed//, nCurrentLine
+var nPrevSelStart, nPrevSelEnd, sPrevSelText, IsInsert, IsMove, IsTabPressed//, nCurrentLine
 
 function OnSetFocus(lParam){
     //PrintLog("OnSetFocus") 
@@ -124,47 +124,47 @@ var sLine2
 function OnSelChanged(lParam){
     //PrintLog("Окончание выделения")
     if (IsTabPressed) {
-        if(!IsInsert) IsTabPressed = false 
+        /*if(!IsInsert)*/ IsTabPressed = false 
         return
-    }
+    }    
     if (nModifiedLine > - 1){ 
-        // Запоминаем текущее выделение
         try{
+            // Запоминаем текущее выделение
             var nSelStart = AkelPad.GetSelStart()
             var nSelEnd = AkelPad.GetSelEnd()
             
             var nCurLine = getLineFromChar(nSelStart) 
             if(nModifiedLine !== nCurLine) {
                 //PrintLog("Начинаем обработку модифицированной строки " + nModifiedLine)
-                var nBgnPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nModifiedLine, 0)
+                var nBgnPos = getLineStartPos(nModifiedLine)
                 var nEndPos = nBgnPos + AkelPad.SendMessage(hWndEdit, 193 /*EM_LINELENGTH*/, nBgnPos, 0)
                 var sLine = AkelPad.GetTextRange(nBgnPos, nEndPos)
                 
-                if (/\S/.test(sLine)){                        
+                if (/\S{3,}/.test(sLine)){                        
                     var nDif = sLine.length  
-                    if (nDif > 2){
-                        sLine = normalizeSpaces(sLine) 
-                        nDif = sLine.length - nDif
-                        PauseEventsFlag = true
-                        StopRedraw() // Отключаем перерисовку 
-                        
-                        AkelPad.SetSel(nBgnPos, nEndPos)            //!!!!!!!!!!!!!!!
-                        AkelPad.ReplaceSel(sLine)                   //!!!!!!!!!!!!!!!
-                        if (nCurLine > nModifiedLine) {
-                            nSelStart += nDif  
-                            nSelEnd += nDif    
-                        }
-                        AkelPad.SetSel(nSelStart, nSelEnd)
-                        
-                        StartRedraw() //Разблокируем перерисовку
-                        PauseEventsFlag = false                 
+                    sLine = normalizeSpaces(sLine) 
+                    nDif = sLine.length - nDif
+                    
+                    PauseEventsFlag = true
+                    StopRedraw() // Отключаем перерисовку 
+                    
+                    AkelPad.SetSel(nBgnPos, nEndPos)            
+                    AkelPad.ReplaceSel(sLine)                   
+                    if (nCurLine > nModifiedLine) {
+                        nSelStart += nDif  
+                        nSelEnd += nDif    
                     }
+                    AkelPad.SetSel(nSelStart, nSelEnd)
+                    
+                    StartRedraw() //Разблокируем перерисовку
+                    PauseEventsFlag = false                 
                 }
                 nModifiedLine = -1
             }
         }catch(e){
             PrintLog(e.description)
             StartRedraw()
+            PauseEventsFlag = true
         }                                     
     }
 }
@@ -177,7 +177,7 @@ function OnTextChanging(lParam){
 //        var crRichSelMin = MemRead(_PtrAdd(lParam, 112), 2/*DT_QWORD*/)   
 //        var crRichSelMax = MemRead(_PtrAdd(lParam, 112+8), 2/*DT_QWORD*/)               
         nPrevSelStart = GetSelStart()
-        sPrevSelText = GetSelText()
+        //sPrevSelText = GetSelText()
     }
         
 /* Описание флагов dwType (AETCT..)                      
@@ -212,7 +212,7 @@ function OnTextChanging(lParam){
       //case 0x00000400: PrintLog("  Нажатие VK_BACK"); break
       //case 0x00000800: PrintLog("  Нажатие VK_DELETE"); break
       //case 0x00001000: PrintLog("  Удаление текста при перетаскивании"); break
-      case 0x00002000: /*PrintLog("  Вставка текста при сбросе")*/IsInsert = true; break
+      case 0x00002000: /*PrintLog("  Вставка текста при сбросе")*/IsMove = true; break
       //case 0x00004000: PrintLog("  Отмена/Повтор для колоночного текста сгруппирована из действий на одной строке."); break 
     }  
 }
@@ -272,24 +272,24 @@ function OnTextChanged(lParam){
     try{
         var nCurSelStart = AkelPad.GetSelStart()
         var nCurLine = getLineFromChar(nCurSelStart) 
-        if (nModifiedLine !== nCurLine) nModifiedLine = nCurLine   //запоминаем модифицированную строку для ее постобработки fff
+        if (nModifiedLine !== nCurLine) nModifiedLine = nCurLine  //запоминаем модифицированную строку для ее постобработки fff
         
         if (IsInsert){
             IsInsert = false
             var nPrevLine = getLineFromChar(nPrevSelStart)
             
-            if(nPrevLine !== nCurLine){
+            if(nPrevLine !== nCurLine){     //проверяем больше ли размер вставленного текста чем 1 строка
+                var nStartPos = getLineStartPos(nPrevLine)
+                var nEndPos = getLineStartPos(nCurLine) + 1
+                var sInsText = AkelPad.GetTextRange(nStartPos, nEndPos) // Получаем строки, захватываемые вставленным текстом) за исключением 
                 //Проверяем, если были вставлены только пробельные символы, то не обрабатываем их
-                if (!/\S\S\S/.test(AkelPad.GetTextRange(nPrevSelStart, nCurSelStart))) return 
+                if (!/\S\S\S/.test(sInsText) return 
+                
                 PauseEventsFlag = true
                 StopRedraw()
                 //var re = new RegExp("^(?!\\s{16})\\s{1,15}");
-                var nStartPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nPrevLine, 0)
-                var nEndPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nCurLine, 0) + 1
                 
-                AkelPad.SetSel(nStartPos, nEndPos)           // Получаем строки, захватываемые вставленным текстом) за исключением 
-                var sInsText = AkelPad.GetSelText()          // последней, в которую устанавливается курсор после вставки
-                var nPrevLen = sInsText.length
+                var nPrevLen = sInsText.length               // последней, в которую устанавливается курсор после вставки
                 
                 sInsText = normalizeSpaces(sInsText)         // нормализуем пробелы
                 var sIndent = Space(nPrevSelStart - nStartPos)
@@ -303,10 +303,39 @@ function OnTextChanged(lParam){
                 StartRedraw()
                 PauseEventsFlag = false
             }
+        } else if (IsMove){
+            IsMove = false
+            var nCurSelEnd = AkelPad.GetSelEnd()
+            var nStartPos = getLineStartPos(nCurSelStart)
+            var nEndPos = getLineEndPos(nCurSelEnd)
+            var sModifText = AkelPad.GetTextRange(nStartPos, nEndPos)
+            
+            //Проверяем, если были только пробельные символы, то не обрабатываем их
+            if (!/\S\S\S/.test(sModifText)) return 
+            
+            PauseEventsFlag = true
+            StopRedraw()
+            //var re = new RegExp("^(?!\\s{16})\\s{1,15}");
+                      
+            var nPrevLen = sModifText.length
+            
+            sModifText = normalizeSpaces(sModifText)         // нормализуем пробелы
+    //        var sIndent = Space(nPrevSelStart - nStartPos)
+    //        var sModifText = addIndents(sModifText, sIndent) // добавляем отступы
+            
+            AkelPad.SetSel(nStartPos, nEndPos)        
+            AkelPad.ReplaceSel(sModifText)                 // Вставляем в редактор обработанный текст
+            
+            nCurSelEnd += sModifText.length - nPrevLen   // Восстанавливаем положение курсора с учетом изменившейся длины нормализованного текста
+            AkelPad.SetSel(nCurSelStart, nCurSelEnd)
+            
+            StartRedraw()
+            PauseEventsFlag = false
         }
     }catch(e){
-        PrintLog(e.description)
+        PrintLog("Ошибка в OnTextChanged: " + e.description)
         StartRedraw()
+        PauseEventsFlag = false
     }
 }
 

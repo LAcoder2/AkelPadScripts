@@ -95,7 +95,7 @@ function TestEvents(){
 // ---------------------------------------------------------
 // Функции - обработчики событий
 // ---------------------------------------------------------
-var nPrevSelStart, nPrevSelEnd, sPrevSelText, InsertFlag, MoveFlag //, nCurrentLine     
+var nPrevSelStart, nPrevSelEnd, sPrevSelText, InsertFlag, MoveFlag, DeleteFlag //, nCurrentLine     
 
 function OnSetFocus(lParam){
     PrintLog("OnSetFocus") 
@@ -110,9 +110,9 @@ function OnSetFocus(lParam){
     }           
 }
 function OnChangeModifySatus(lParam) {PrintLog("AEN_MODIFY");} 
-function OnSelChanging(lParam){/*PrintLog("Начало выделения");*/}   
+function OnSelChanging(lParam){PrintLog("Начало выделения");}   
 function OnSelChanged(lParam){
-    //PrintLog("Окончание выделения")
+    PrintLog("Окончание выделения")
     var nLine = getLineFromChar(AkelPad.GetSelStart()) 
     if (nModifiedLine > -1){ 
         if(nModifiedLine !== nLine) {
@@ -126,7 +126,7 @@ function OnTextChanging(lParam){
     PrintLog("Перед изменением")
     with(AkelPad){
         var dwType = MemRead(_PtrAdd(lParam, dwTypeOff/*см. WitnEvents.js*/), 3/*DT_DWORD*/)          
-//        var bColumnSel = MemRead(_PtrAdd(lParam, 108), 3/*DT_DWORD*/)     //флаг колоночного выделения777  
+        var bColumnSel = MemRead(_PtrAdd(lParam, 108), 3/*DT_DWORD*/)     //флаг колоночного выделения  
 //        var crRichSelMin = MemRead(_PtrAdd(lParam, 112), 2/*DT_QWORD*/)   
 //        var crRichSelMax = MemRead(_PtrAdd(lParam, 112+8), 2/*DT_QWORD*/)                
         nPrevSelStart = GetSelStart()
@@ -150,7 +150,8 @@ function OnTextChanging(lParam){
         #define AETCT_DROPINSERT        0x00002000  //Вставка текста при сбросе. 
         #define AETCT_COLUMNGROUP       0x00004000  //Отмена/Повтор для колоночного текста сгруппирована из действий на одной строке.
 */                   
-    PrintLog("dwType = 0x" + (dwType).toString(16))
+    PrintLog("dwType = 0x" + (dwType).toString(16)) 
+    if (bColumnSel) PrintLog("Используется колоночное выделение")
     switch (dwType){
       case 0x00000001: 
           PrintLog("  Замена выделения ")
@@ -170,7 +171,7 @@ function OnTextChanging(lParam){
       case 0x00000800: PrintLog("  Нажатие VK_DELETE"); break
       case 0x00001000: PrintLog("  Удаление текста при перетаскивании"); break
       case 0x00002000: 
-          PrintLog("  Вставка текста при сбросе")
+          PrintLog("  Вставка текста при сбросе (перетаскивание текста мышью drag drop)")
           MoveFlag = true
           break
       case 0x00004000: PrintLog("  Отмена/Повтор для колоночного текста сгруппирована из действий на одной строке."); break 
@@ -185,30 +186,45 @@ function OnTextInsertEnd(lParam){              //111fszzfsz g
       if (InsertFlag){
           var sInsText = AkelPad.GetTextRange(nPrevSelStart, nCurSelStart)
           if (sPrevSelText.length)
-              PrintLog("  Вы заменили \"" + sPrevSelText + "\" на \"" + sInsText +"\"")
+              PrintLog("  Вы заменили \n\"" + sPrevSelText + "\" на \"" + sInsText +"\"")
           else       
-              PrintLog("  Вы вставили \"" + sInsText +"\"")
+              PrintLog("  Вы вставили \n\"" + sInsText +"\"")
           InsertFlag = false     
-      }else if(MoveFlag){
-          sInsText = AkelPad.GetSelText()
-          PrintLog(sInsText.length)
-          PrintLog("  Вы переместили \"" + sPrevSelText + "\"")
-          MoveFlag = false
+//      }else if(MoveFlag){
+//          sInsText = AkelPad.GetSelText()
+//          PrintLog(sInsText.length)
+//          PrintLog("  Вы переместили \"" + sPrevSelText + "\"")
+//          MoveFlag = false
       }
     }catch(e){
         PrintLog(e.description)
     }
 }
-function OnTextDeleteBegin(lParam){PrintLog("Перед удалением");}
+function OnTextDeleteBegin(lParam){
+    PrintLog("Перед удалением");
+    DeleteFlag = true
+}
 function OnTextDeleteEnd(lParam){
     PrintLog("После удаления")
-    PrintLog("  Вы удалили: \"" + sPrevSelText)
+    PrintLog("  Удалено: \n\"" + sPrevSelText + "\"")
 }
 
 function OnTextChanged(lParam){
-    PrintLog("После изменения \n\n")
+    PrintLog("После изменения \n ")
     var nLine = getLineFromChar(AkelPad.GetSelStart()) 
-    if (nModifiedLine !== nLine) nModifiedLine = nLine   //запоминаем модифицированную строку для ее постобработки
+    if(MoveFlag){
+          var sMovedText = AkelPad.GetSelText()
+          if(DeleteFlag)
+              PrintLog("  Вы переместили перетаскиванием\n\"" + sMovedText + "\"")
+          else
+              PrintLog("  Вы скопировали перетаскиванием\n\"" + sMovedText + "\"")
+          
+          MoveFlag = false
+    }else if (nModifiedLine !== nLine) {
+        nModifiedLine = nLine   //запоминаем модифицированную строку для ее постобработки
+    }
+    
+    if (DeleteFlag) DeleteFlag = false
 }
 
 // --------------------------------------------------------- 

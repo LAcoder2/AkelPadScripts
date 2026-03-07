@@ -1,4 +1,5 @@
 ﻿//Coder.js
+var hMainWnd = AkelPad.GetMainWnd()
 var hWndEdit = AkelPad.GetEditWnd()
 var oSys=AkelPad.SystemFunction()
 
@@ -97,14 +98,14 @@ function normalizeSpaces(sInp) {
             reRE: /([^\w*])(\/[^\r\n]*[^\\]\/)(?=[gmi]*[^\w*])/g,
             reC1: /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
             reC2: /^[\s\S]*?\*\/|\/\*[\s\S]*?$/g,
-            re1: /(".*?[^\\]"|'.*?[^\\]'|\+\+|\-\-)|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/g,
+            re1: /(".*?[^\\]"|'.*?[^\\]'|\+{2,}|-{2,})|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/g,
             re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/g,
             re0: /__PH_\d+_/g
         }
     }
     var placeholders = {}, counter = 0
     with(normalizeSpacesData){
-      var ph   //Подготовка подстрок, не входящих в обработку
+      var ph   //Маскировка подстрок, не входящих в обработку
       sOut = sInp.replace(reRE, function (match, match1, match2){
                                     ph = "__PH_" + counter++ + "_"
                                     placeholders[ph] = match2
@@ -155,7 +156,19 @@ function getTabSize(){
         return AkelPad.SendMessage(hMainWnd, 1223 /*AKD_GETFRAMEINFO*/, 52 /*FI_TABSTOPSIZE*/, 0);
 }
 //Получить начало линии из позиции
-//function getLineStartPos(hWnd, nPos){    
-//    var nLine = AkelPad.SendMessage(hWnd, 1078 /*EM_EXLINEFROMCHAR*/, 0, nPos)
-//    return AkelPad.SendMessage(hWnd, 187 /*EM_LINEINDEX*/, nLine, 0)
-//}
+function getLineStartPos(nPos){    
+    var nLine = AkelPad.SendMessage(hWndEdit, 1078 /*EM_EXLINEFROMCHAR*/, 0, nPos)
+    return AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nLine, 0)
+}
+function getLineEndPos(nPos){
+    var nLine = AkelPad.SendMessage(hWndEdit, 1078 /*EM_EXLINEFROMCHAR*/, 0, nPos)
+    var nLineStart = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nLine, 0)
+    var nLineLength = AkelPad.SendMessage(hWndEdit, 193 /*EM_LINELENGTH*/, nLineStart, 0)
+    return nLineStart + nLineLength
+}
+function getLineText(nPos){
+    var nLine = AkelPad.SendMessage(hWndEdit, 1078 /*EM_EXLINEFROMCHAR*/, 0, nPos)
+    var nLineStart = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nLine, 0)
+    var nLineLength = AkelPad.SendMessage(hWndEdit, 193 /*EM_LINELENGTH*/, nLineStart, 0)
+    return AkelPad.GetTextRange(nLineStart, nLineStart + nLineLength - 1)
+}   

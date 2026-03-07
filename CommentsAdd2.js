@@ -8,7 +8,7 @@ with (AkelPad){
     var selStart = GetSelStart()
     var selEnd = GetSelEnd()    
     var selText = GetSelText()
-    var lineStart = getLineStartPos(hWndEdit, selStart)
+    var lineStart = getLineStartPos(selStart)
     
     var comms = GetSyntaxComments()
     if (comms === null || comms.length === 0){
@@ -42,17 +42,3 @@ with (AkelPad){
         SetSel(selStart, selStart + selText.length + n)         
     }
 }
-
-//Получить начало линии из позиции
-function getLineStartPos(hWnd, nPos){    
-    var nLine = AkelPad.SendMessage(hWnd, 1078 /*EM_EXLINEFROMCHAR*/, 0, nPos)
-    return AkelPad.SendMessage(hWnd, 187 /*EM_LINEINDEX*/, nLine, 0)
-}
-
-/*
-arr1 = [1,2,3,4,5];
-WScript.Echo(arr1.length)
-arr1.pop()
-WScript.Echo(arr1.length)
-
-*/
