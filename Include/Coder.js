@@ -97,22 +97,19 @@ function normalizeSpaces(sInp) {
             reRE: /([^\w*])(\/[^\r\n]*[^\\]\/)(?=[gmi]*[^\w*])/g,
             reC1: /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
             reC2: /^[\s\S]*?\*\/|\/\*[\s\S]*?$/g,
-            reQ: /\\\"/g,
-            re1: /(".*?"|'.*?'|\+\+|\-\-)|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/g,
+            re1: /(".*?[^\\]"|'.*?[^\\]'|\+\+|\-\-)|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/g,
             re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/g,
-            reQ2: /\x0b\x0c/g,
             re0: /__PH_\d+_/g
         }
     }
     var placeholders = {}, counter = 0
     with(normalizeSpacesData){
-      var ph
+      var ph   //Подготовка подстрок, не входящих в обработку
       sOut = sInp.replace(reRE, function (match, match1, match2){
                                     ph = "__PH_" + counter++ + "_"
                                     placeholders[ph] = match2
                                     return match1 + ph
                               })
-      //PrintLog(sOut); WScript.Quit()
       var sOut = sOut.replace(reC1, function (match){
                                       ph = "__PH_" + counter++ + "_"
                                       placeholders[ph] = match
@@ -123,8 +120,7 @@ function normalizeSpaces(sInp) {
                                       placeholders[ph] = match
                                       return ph
                               })
-      sOut = sOut.replace(reQ, "\x0b\x0c")                // ..\"..
-      
+      //Выравнивание пробелов
       sOut = sOut.replace(re1, function (match, match1, match2){
                                   if(match1){
                                       return match1
@@ -133,15 +129,15 @@ function normalizeSpaces(sInp) {
                                   }
                          })
       sOut = sOut.replace(re2, "$1 $2 $3 $4 ")            // (..)_(?)_(..)_(:)_..
-          
-      sOut = sOut.replace(reQ2, "\\\"")
-      counter = 0
+      
+      //Восстанавливаем маскированные подстроки    
       sOut = sOut.replace(re0, function (match){
                                   return placeholders[match]
                          })
     }
     return sOut
 }
+
 //Блокировка перерисовки окна
 function StopRedraw(){
     AkelPad.SendMessage(hWndEdit, 11/*WM_SETREDRAW*/, false, 0)     
@@ -163,59 +159,3 @@ function getTabSize(){
 //    var nLine = AkelPad.SendMessage(hWnd, 1078 /*EM_EXLINEFROMCHAR*/, 0, nPos)
 //    return AkelPad.SendMessage(hWnd, 187 /*EM_LINEINDEX*/, nLine, 0)
 //}
-
-//function normalizeSpaces(sInp) {
-//    try{
-//    if(!normalizeSpacesData){
-//        normalizeSpacesData = {
-//            reBC: /\/\*([\s\S]*?)\*\//gm,
-//            reC: /\/\//gm,
-//            reQ: /\\\"/gm,
-//            re1: /(\x01\x02[\s\S]*?\x03\x04|\x07\x08.*?$|".*?"|'.*?')|\s*(===|==|!==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/gm,
-//            re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/gm,
-//            reQ2: /\x0b\x0c/gm,
-//            reC2: /\x07\x08/gm,
-//            reBC2: /\x01\x02([\s\S]*?)\x03\x04/gm
-//        }
-//    }
-//    with(normalizeSpacesData){
-//      var sOut
-//      var blBC = reBC.test(sInp)                        // /*...*/
-//      if(blBC){sOut = sInp.replace(reBC, "\x01\x02$1\x03\x04");} else sOut = sInp 
-//      var blC = reC.test(sOut)
-//      if(blC){sOut = sOut.replace(reC, "\x07\x08");}      // //...
-//      var blQ = reQ.test(sOut)
-//      if(blQ){sOut = sOut.replace(reQ, "\x0b\x0c");}      // ..\"..
-//      
-//      bl1 = re1.test(sOut)
-//      if(bl1){
-//          sOut = sOut.replace(re1, 
-//                              function (match1, match2, match3){
-//                                  //PrintLog(match2)
-//                                  if(match2){
-//                                      return match2
-//                                  } else {
-//                                      return " " + match3 + " "
-//                                  }
-//                              })
-//      }
-//      bl2 = re2.test(sOut)
-//      if(bl2){sOut = sOut.replace(re2, "$1 $2 $3 $4 ");}      // (..)_(?)_(..)_(:)_..
-//      PrintLog(blBC.toString()+blC+blQ+bl1+bl2)    
-//      if(blQ){sOut = sOut.replace(reQ2, "\\\"");}
-//      if(blC){sOut = sOut.replace(reC2, "\/\/");}
-//      if(blBC){sOut = sOut.replace(reBC2, "\/\*$1\*\/");}
-//    }
-//    }catch(e){
-//         PrintLog(e.description())
-//    }
-//    return sOut;
-//}
-
-/*
-arr1 = [1,2,3,4,5];
-WScript.Echo(arr1.length)
-arr1.pop()
-WScript.Echo(arr1.length)
-
-*/
