@@ -212,7 +212,7 @@ function OnTextChanging(lParam){
       //case 0x00000400: PrintLog("  Нажатие VK_BACK"); break
       //case 0x00000800: PrintLog("  Нажатие VK_DELETE"); break
       //case 0x00001000: PrintLog("  Удаление текста при перетаскивании"); break
-      //case 0x00002000: PrintLog("  Вставка текста при сбросе"); break
+      case 0x00002000: /*PrintLog("  Вставка текста при сбросе")*/IsInsert = true; break
       //case 0x00004000: PrintLog("  Отмена/Повтор для колоночного текста сгруппирована из действий на одной строке."); break 
     }  
 }

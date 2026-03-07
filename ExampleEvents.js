@@ -2,8 +2,8 @@
 //var hWndEdit = AkelPad.GetEditWnd()
 AkelPad.Include("WinEvents.js")
 AkelPad.Include("Coder.js")
-var oSys=AkelPad.SystemFunction()
-/* Уведомления AkelEdit (0x702-0x836 1794-2102)
+var oSys = AkelPad.SystemFunction()
+ /*Уведомления AkelEdit (0x702 - 0x836 1794 - 2102)
 //Уведомления об ошибках
 //    #define AEN_ERRSPACE              (WM_USER + 1001)  //WScript.Echo(0x7E9)
 //Уведомления окна
@@ -95,7 +95,7 @@ function TestEvents(){
 // ---------------------------------------------------------
 // Функции - обработчики событий
 // ---------------------------------------------------------
-var nPrevSelStart, nPrevSelEnd, sPrevSelText//, nCurrentLine     
+var nPrevSelStart, nPrevSelEnd, sPrevSelText, InsertFlag, MoveFlag //, nCurrentLine     
 
 function OnSetFocus(lParam){
     PrintLog("OnSetFocus") 
@@ -154,6 +154,7 @@ function OnTextChanging(lParam){
     switch (dwType){
       case 0x00000001: 
           PrintLog("  Замена выделения ")
+          InsertFlag = true
           //PrintLog("  \"" + sPrevSelText + "\"")
           break 
       case 0x00000002: PrintLog("  Добавление текста"); break
@@ -168,7 +169,10 @@ function OnTextChanging(lParam){
       case 0x00000400: PrintLog("  Нажатие VK_BACK"); break
       case 0x00000800: PrintLog("  Нажатие VK_DELETE"); break
       case 0x00001000: PrintLog("  Удаление текста при перетаскивании"); break
-      case 0x00002000: PrintLog("  Вставка текста при сбросе"); break
+      case 0x00002000: 
+          PrintLog("  Вставка текста при сбросе")
+          MoveFlag = true
+          break
       case 0x00004000: PrintLog("  Отмена/Повтор для колоночного текста сгруппирована из действий на одной строке."); break 
     }  
 }
@@ -177,12 +181,23 @@ function OnTextInsertBegin(lParam){PrintLog("Перед вставкой");}
 function OnTextInsertEnd(lParam){              //111fszzfsz g
     PrintLog("После вставки")    
     var nCurSelStart = AkelPad.GetSelStart()
-    var sInsText = AkelPad.GetTextRange(nPrevSelStart, nCurSelStart)
-    if (sPrevSelText.length)
-        PrintLog("  Вы заменили \"" + sPrevSelText + "\" на \"" + sInsText +"\"")
-    else       
-        PrintLog("  Вы вставили \"" + sInsText +"\"") 
-    
+    try{
+      if (InsertFlag){
+          var sInsText = AkelPad.GetTextRange(nPrevSelStart, nCurSelStart)
+          if (sPrevSelText.length)
+              PrintLog("  Вы заменили \"" + sPrevSelText + "\" на \"" + sInsText +"\"")
+          else       
+              PrintLog("  Вы вставили \"" + sInsText +"\"")
+          InsertFlag = false     
+      }else if(MoveFlag){
+          sInsText = AkelPad.GetSelText()
+          PrintLog(sInsText.length)
+          PrintLog("  Вы переместили \"" + sPrevSelText + "\"")
+          MoveFlag = false
+      }
+    }catch(e){
+        PrintLog(e.description)
+    }
 }
 function OnTextDeleteBegin(lParam){PrintLog("Перед удалением");}
 function OnTextDeleteEnd(lParam){

@@ -67,8 +67,8 @@ var spaceData
 function Space(cnt){
     if (!spaceData){
         spaceData = {
-          spaceBuf: "",  
-          bufLen: 0        
+          spaceBuf: "          ",  
+          bufLen: 10 /*начальный размер пробельного буфера*/       
         }
     }
     with(spaceData){
@@ -94,45 +94,51 @@ var normalizeSpacesData
 function normalizeSpaces(sInp) {
     if(!normalizeSpacesData){
         normalizeSpacesData = {
-            reBC: /\/\*([\s\S]*?)\*\//gm,
-            reRE: /(\W)(\/[^\n\r]*[^\\]\/)(?=[gmi]*\W)/gm,
-            reC: /\/\//gm,
-            reQ: /\\\"/gm,
-            re1: /(\x01\x02[\s\S]*?\x03\x04|\x07\x08.*?$|".*?"|'.*?')|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/gm,
-            re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/gm,
-            reQ2: /\x0b\x0c/gm,
-            reC2: /\x07\x08/gm,                                                   
-            reRE2: /_PH_\d+/gm,
-            reBC2: /\x01\x02([\s\S]*?)\x03\x04/gm
+            reRE: /([^\w*])(\/[^\r\n]*[^\\]\/)(?=[gmi]*[^\w*])/g,
+            reC1: /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
+            reC2: /^[\s\S]*?\*\/|\/\*[\s\S]*?$/g,
+            reQ: /\\\"/g,
+            re1: /(".*?"|'.*?'|\+\+|\-\-)|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/g,
+            re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/g,
+            reQ2: /\x0b\x0c/g,
+            re0: /__PH_\d+_/g
         }
     }
-    var placeholders = [], counter = 0
+    var placeholders = {}, counter = 0
     with(normalizeSpacesData){
-      var sOut = sInp.replace(reBC, "\x01\x02$1\x03\x04")
-      sOut = sOut.replace(reRE, function (unuse, match1, match2){
-                                    placeholders[counter] = match2
-                                    return match1 + "_PH_" + counter++
-                                }
-                         )
-      sOut = sOut.replace(reC, "\x07\x08")        // //...
-      sOut = sOut.replace(reQ, "\x0b\x0c")               // ..\"..
+      var ph
+      sOut = sInp.replace(reRE, function (match, match1, match2){
+                                    ph = "__PH_" + counter++ + "_"
+                                    placeholders[ph] = match2
+                                    return match1 + ph
+                              })
+      //PrintLog(sOut); WScript.Quit()
+      var sOut = sOut.replace(reC1, function (match){
+                                      ph = "__PH_" + counter++ + "_"
+                                      placeholders[ph] = match
+                                      return ph
+                              })
+      var sOut = sOut.replace(reC2, function (match){
+                                      ph = "__PH_" + counter++ + "_"
+                                      placeholders[ph] = match
+                                      return ph
+                              })
+      sOut = sOut.replace(reQ, "\x0b\x0c")                // ..\"..
       
-      sOut = sOut.replace(re1, function (match1, match2, match3){
-                                  if(match2){
-                                      return match2
+      sOut = sOut.replace(re1, function (match, match1, match2){
+                                  if(match1){
+                                      return match1
                                   } else {
-                                      return " " + match3 + " "
+                                      return " " + match2 + " "
                                   }
                          })
-      sOut = sOut.replace(re2, "$1 $2 $3 $4 ") // (..)_(?)_(..)_(:)_..
+      sOut = sOut.replace(re2, "$1 $2 $3 $4 ")            // (..)_(?)_(..)_(:)_..
           
       sOut = sOut.replace(reQ2, "\\\"")
-      sOut = sOut.replace(reC2, "\/\/")
       counter = 0
-      sOut = sOut.replace(reRE2, function (match){
-                                     return placeholders[counter++]
+      sOut = sOut.replace(re0, function (match){
+                                  return placeholders[match]
                          })
-      sOut = sOut.replace(reBC2, "\/\*$1\*\/")
     }
     return sOut
 }

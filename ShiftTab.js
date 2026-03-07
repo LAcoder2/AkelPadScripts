@@ -14,8 +14,8 @@ function main() {
     if (selStart === selEnd) {
         processNoSelection(hWndEdit, selStart)          // Выделения нет - проверяем 4 пробела перед курсором
     } else {
-        processSelection(hWndEdit, selStart, selEnd)    // Есть выделение - обрабатываем каждую строку
-        //AkelPad.Command(4166)
+        //processSelection(hWndEdit, selStart, selEnd)    // Есть выделение - обрабатываем каждую строку
+        AkelPad.Command(4166)
     }
 } 
 main();
