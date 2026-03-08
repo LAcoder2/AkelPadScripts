@@ -72,14 +72,18 @@ function Space(cnt){
           bufLen: 10 /*начальный размер пробельного буфера*/       
         }
     }
-    with(spaceData){
-        if (bufLen < cnt){
-            var ar = Array(cnt-bufLen+1)
-            spaceBuf += ar.join(" ")
-            bufLen = cnt
+    if (cnt>0)
+        with(spaceData){
+            if (bufLen < cnt){
+                var ar = Array(cnt-bufLen+1)
+                spaceBuf += ar.join(" ")
+                bufLen = cnt
+            }
+            
+            return spaceBuf.substring(0, cnt)
         }
-        
-        return spaceBuf.substring(0, cnt)
+    else if(cnt = 0){
+        return ""
     }
 }
 function getIndent(){
@@ -95,11 +99,11 @@ var normalizeSpacesData
 function normalizeSpaces(sInp) {
     if(!normalizeSpacesData){
         normalizeSpacesData = {
-            reRE: /([^\w*])(\/[^\r\n]*[^\\]\/)(?=[gmi]*[^\w*])/g,
-            reC1: /\/\*[\s\S]*?\*\/|\/\/[^\n]*/g,
-            reC2: /^[\s\S]*?\*\/|\/\*[\s\S]*?$/g,
-            re1: /(".*?[^\\]"|'.*?[^\\]'|\+{2,}|-{2,})|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/g,
-            re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/g,
+            reRE: /([^\w*])(\/[^\r\n]*[^\\]\/)(?=[gmi]*[^\w*])/g, // /../     
+            reC1: /\/\*[\s\S]*?\*\/|\/\/.*?([\r\n]|$)/g,     // /*..*/|//..  
+            reC2: /^[\s\S]*?\*\/|\/\*[\s\S]*?$/g,                 // ..*/|/*.. 
+            re1: /(".*?[^\\]"|'.*?[^\\]'|-\w|\+{2,}|-{2,})|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/g,
+            re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/g,                // (..)_(?)_(..)_(:)_..
             re0: /__PH_\d+_/g
         }
     }

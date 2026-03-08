@@ -110,9 +110,9 @@ function OnSetFocus(lParam){
     }           
 }
 function OnChangeModifySatus(lParam) {PrintLog("AEN_MODIFY");} 
-function OnSelChanging(lParam){PrintLog("Начало выделения");}   
+function OnSelChanging(lParam){/*PrintLog("Начало выделения");*/}   
 function OnSelChanged(lParam){
-    PrintLog("Окончание выделения")
+//    PrintLog("Окончание выделения")
     var nLine = getLineFromChar(AkelPad.GetSelStart()) 
     if (nModifiedLine > -1){ 
         if(nModifiedLine !== nLine) {
