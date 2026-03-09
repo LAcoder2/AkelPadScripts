@@ -99,50 +99,65 @@ var normalizeSpacesData
 function normalizeSpaces(sInp) {
     if(!normalizeSpacesData){
         normalizeSpacesData = {
-            reRE: /([^\w*])(\/[^\r\n]*[^\\]\/)(?=[gmi]*[^\w*])/g, // /../     
-            reC1: /\/\*[\s\S]*?\*\/|\/\/.*?([\r\n]|$)/g,     // /*..*/|//..  
-            reC2: /^[\s\S]*?\*\/|\/\*[\s\S]*?$/g,                 // ..*/|/*.. 
-            re1: /(".*?[^\\]"|'.*?[^\\]'|-\w|\+{2,}|-{2,})|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/g,
-            re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/g,                // (..)_(?)_(..)_(:)_..
+            reRE: /([^\w*])(\/[\s\S]*?[^\\]\/)(?=[gmi]*[^\w*]*)/g, // /../     
+            reC1: /(\/\/.*?(?=[\r\n]+|$)|\/\*[\s\S]*?\*\/)/g,         // /*..*/|//..  
+            reC2: /^[\s\S]*?\*\/|\/\*[\s\S]*?$/g,                   // ..*/|/*.. 
+            re1: /(".*?[^\\]"|'.*?[^\\]'| -+\w+|-+\w+|-{2}|\+{2})|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/g,
+            re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/g,                  // (..)_(?)_(..)_(:)_..
             re0: /__PH_\d+_/g
         }
     }
     var placeholders = {}, counter = 0
     with(normalizeSpacesData){
       var ph   //Маскировка подстрок, не входящих в обработку
-      sOut = sInp.replace(reRE, function (match, match1, match2){
-                                    ph = "__PH_" + counter++ + "_"
-                                    placeholders[ph] = match2
-                                    return match1 + ph
-                              })
-      var sOut = sOut.replace(reC1, function (match){
+      var sOut = sInp
+      //if(reC1.test(sInp))
+          sOut = sOut.replace(reC1, function (match){
+                                          ph = "__PH_" + counter++ + "_"
+                                          placeholders[ph] = match
+                                          return ph
+                                  })
+      //PrintLog("sOut = " + sOut + "\n ")
+      //if(reRE.test(sOut))
+          sOut = sOut.replace(reRE, function (match, match1, match2){
+                                        ph = "__PH_" + counter++ + "_"
+                                        placeholders[ph] = match2
+                                        return match1 + ph
+                                  })
+      //PrintLog("sOut = " + sOut + "\n ")
+      //if(reC2.test(sOut))
+          sOut = sOut.replace(reC2, function (match){
                                       ph = "__PH_" + counter++ + "_"
                                       placeholders[ph] = match
                                       return ph
                               })
-      var sOut = sOut.replace(reC2, function (match){
-                                      ph = "__PH_" + counter++ + "_"
-                                      placeholders[ph] = match
-                                      return ph
-                              })
+      //PrintLog("sOut = " + sOut + "\n ")
       //Выравнивание пробелов
-      sOut = sOut.replace(re1, function (match, match1, match2){
-                                  if(match1){
-                                      return match1
-                                  } else {
-                                      return " " + match2 + " "
-                                  }
-                         })
-      sOut = sOut.replace(re2, "$1 $2 $3 $4 ")            // (..)_(?)_(..)_(:)_..
-      
+      //if(re1.test(sOut))
+          sOut = sOut.replace(re1, function (match, match1, match2){
+                                      if(match1){
+                                          return match1
+                                      } else {
+                                          return " " + match2 + " "
+                                      }
+                             })
+      //if(re2.test(sOut))
+          sOut = sOut.replace(re2, "$1 $2 $3 $4 ")            // (..)_(?)_(..)_(:)_..
+        //PrintLog("sOut = " + sOut + "\n ")
+        
       //Восстанавливаем маскированные подстроки    
-      sOut = sOut.replace(re0, function (match){
-                                  return placeholders[match]
-                         })
+      if(isObjectNoEmpty(placeholders))
+          sOut = sOut.replace(re0, function (match){
+                                      return placeholders[match]
+                             })
     }
     return sOut
 }
 
+function isObjectNoEmpty(obj){
+    for(var key in obj) return true
+    return false
+}
 //Блокировка перерисовки окна
 function StopRedraw(){
     AkelPad.SendMessage(hWndEdit, 11/*WM_SETREDRAW*/, false, 0)     
