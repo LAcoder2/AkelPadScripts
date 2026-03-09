@@ -64,6 +64,11 @@ function addIndents(sInp, sIndent){
     return sInp.replace(re_rn, "$1" + sIndent)
 }
 //Аналог Space() в VBS. Получение строки, заданной длины, заполненной пробелами
+//testSpace()
+//function testSpace(){
+//    AkelPad.Include("log.js")
+//    PrintLog("|" + Space(0) + "|")
+//}
 var spaceData
 function Space(cnt){
     if (!spaceData){
@@ -71,19 +76,16 @@ function Space(cnt){
           spaceBuf: "          ",  
           bufLen: 10 /*начальный размер пробельного буфера*/       
         }
-    }
-    if (cnt>0)
-        with(spaceData){
-            if (bufLen < cnt){
-                var ar = Array(cnt-bufLen+1)
-                spaceBuf += ar.join(" ")
-                bufLen = cnt
-            }
-            
-            return spaceBuf.substring(0, cnt)
+    } 
+    
+    with(spaceData){
+        if (bufLen < cnt){
+            var ar = Array(cnt+1)
+            spaceBuf = ar.join(" ")
+            bufLen = cnt
         }
-    else if(cnt = 0){
-        return ""
+        
+        return spaceBuf.substr(0, cnt)
     }
 }
 function getIndent(){
@@ -102,7 +104,7 @@ function normalizeSpaces(sInp) {
             reRE: /([^\w*])(\/[\s\S]*?[^\\]\/)(?=[gmi]*[^\w*]*)/g, // /../     
             reC1: /(\/\/.*?(?=[\r\n]+|$)|\/\*[\s\S]*?\*\/)/g,         // /*..*/|//..  
             reC2: /^[\s\S]*?\*\/|\/\*[\s\S]*?$/g,                   // ..*/|/*.. 
-            re1: /(".*?[^\\]"|'.*?[^\\]'| -+\w+|-+\w+|-{2}|\+{2})|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/g,
+            re1: /(".*?[^\\]"|'.*?[^\\]'| -{1,2}\w|-{1,2}\w|\w--|\+\+\w|\w\+\+)|\s*(===|!==|==|!=|\+=|-=|\*=|\/=|%=|>>>=|>>>|>>=|>>|>=|<<=|<<|<=|\|\||\|=|&&|&=|^=|[=\<\>\*\-+\/|&~\^])\s*/g,
             re2: /(\S)\s*(\?)\s*(.*?)\s*(\:)\s*/g,                  // (..)_(?)_(..)_(:)_..
             re0: /__PH_\d+_/g
         }

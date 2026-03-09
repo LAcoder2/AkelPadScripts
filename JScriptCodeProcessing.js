@@ -95,7 +95,7 @@ function startProcessing(){
 // ---------------------------------------------------------
 // Функции - обработчики событий
 // ---------------------------------------------------------
-var nPrevSelStart, nPrevSelEnd, sPrevSelText, IsInsert, IsMove, IsTabPressed//, nCurrentLine
+var nPrevSelStart, nPrevSelEnd, sPrevSelText, IsInsert, IsMove, IsTabPressed, IsEnterPressed, bColumnSel //, nCurrentLine
 
 function OnSetFocus(lParam){
     //PrintLog("OnSetFocus") 
@@ -120,6 +120,7 @@ function OnSelChanging(lParam){
         if (!IsTabPressed) IsTabPressed = true
     else
         if (IsTabPressed) IsTabPressed = false
+    if (oSys.Call("user32::GetAsyncKeyState", 0xd/*VK_RETURN*/)) IsEnterPressed = true
 }
 var sLine2
 function OnSelChanged(lParam){
@@ -143,28 +144,50 @@ function OnSelChanged(lParam){
                 if (/\S{3,}/.test(sLine)){                  
                     var nDif = sLine.length  
                     sLine = normalizeSpaces(sLine) 
-                    PrintLog(sLine)
+                    //PrintLog(sLine)
                     nDif = sLine.length - nDif
                     
                     PauseEventsFlag = true
-                    StopRedraw() // Отключаем перерисовку 
+                    //StopRedraw() // Отключаем перерисовку 
                     
-                    AkelPad.SetSel(nBgnPos, nEndPos)            
-                    AkelPad.ReplaceSel(sLine)                   
-                    if (nCurLine > nModifiedLine) {
-                        nSelStart += nDif  
-                        nSelEnd += nDif    
+                    //PrintLog("IsEnterPressed = " + IsEnterPressed)
+                    if(IsEnterPressed){
+                        IsEnterPressed = false
+                        //PrintLog("IsEnterPressed " + sLine.charAt(sLine.length - 1))
+                        if (sLine.charAt(sLine.length - 1) === "{"){
+                            var nIndent = sLine.search(/\S/)
+                            //PrintLog("nIndent = " + nIndent)
+                            if (nIndent === -1) nIndent = 0
+                            var sIndent = Space(nIndent)
+                            var nTabSize = getTabSize()
+                            var sRBraket = "}"
+                            if (AkelPad.GetTextRange(nSelStart, nSelStart+1) === sRBraket) sRBraket = ""  
+                            //PrintLog("sIndent = |" + sIndent + "|\nsRBraket = " + sRBraket)
+                            sLine += "\r" + Space(nIndent + nTabSize * 2) + "\r" + sIndent + sRBraket
+                            //PrintLog("sLine =\n" + sLine.replace(/ /g, "_"))
+                            nEndPos = nSelStart
+                            nSelStart += nDif + nTabSize * 2
+                            //PrintLog("nSelEnd = " + nSelEnd + "\n nSelStart = " + nSelStart)
+                            nSelEnd = nSelStart
+                        }
+                    }else{
+                        if(nCurLine > nModifiedLine) {
+                            nSelStart += nDif  
+                            nSelEnd += nDif    
+                        }
                     }
-                    AkelPad.SetSel(nSelStart, nSelEnd)
                     
-                    StartRedraw() //Разблокируем перерисовку
+                    AkelPad.SetSel(nBgnPos, nEndPos)
+                    AkelPad.ReplaceSel(sLine)
+                    AkelPad.SetSel(nSelStart, nSelEnd)
+                    //StartRedraw() //Разблокируем перерисовку
                     PauseEventsFlag = false                 
                 }
                 nModifiedLine = -1
             }
         }catch(e){
             PrintLog("Ошибка в OnSelChanged: " + e.description)
-            StartRedraw()
+            //StartRedraw()
             PauseEventsFlag = true            
         }                                     
     }
@@ -172,16 +195,18 @@ function OnSelChanged(lParam){
 
 function OnTextChanging(lParam){
     //PrintLog("Перед изменением")
+    //if (oSys.Call("user32::GetAsyncKeyState", 0xd/*VK_RETURN*/)) IsEnterPressed = true
     with(AkelPad){
         var dwType = MemRead(_PtrAdd(lParam, dwTypeOff/*см. WitnEvents.js*/), 3/*DT_DWORD*/)          
-        var bColumnSel = MemRead(_PtrAdd(lParam, 108), 3/*DT_DWORD*/)     //флаг колоночного выделения777  
+        bColumnSel = MemRead(_PtrAdd(lParam, 108), 3/*DT_DWORD*/)     //флаг колоночного выделения777  
 //        var crRichSelMin = MemRead(_PtrAdd(lParam, 112), 2/*DT_QWORD*/)   
 //        var crRichSelMax = MemRead(_PtrAdd(lParam, 112+8), 2/*DT_QWORD*/)               
         nPrevSelStart = GetSelStart()
         if (bColumnSel) nPrevSelEnd = GetSelEnd()
         //sPrevSelText = GetSelText()
     }
-        
+    var nCurLine = getLineFromChar(nPrevSelStart)
+    if (nModifiedLine !== nCurLine) nModifiedLine = nCurLine    
 /* Описание флагов dwType (AETCT..)                      
         #define AETCT_REPLACESEL        0x00000001  //Замена выделения. 
         #define AETCT_APPENDTEXT        0x00000002  //Добавление текста.
@@ -201,7 +226,7 @@ function OnTextChanging(lParam){
 */
 //    PrintLog("dwType = 0x" + (dwType).toString(16))
     switch (dwType){
-      case 0x00000001: /*PrintLog("  Замена выделения ");*/ IsInsert = true; break 
+      case 0x00000001: /*PrintLog("  Замена выделения ");*/IsInsert = true; break 
       //case 0x00000002: PrintLog("  Добавление текста"); break
       //case 0x00000004: PrintLog("  Установка текста"); break
       //case 0x00000008: PrintLog("  Потоковый ввод"); break
@@ -210,7 +235,7 @@ function OnTextChanging(lParam){
       //case 0x00000040: PrintLog("  Повтор действия"); break
       //case 0x00000080: PrintLog("  Вырезание"); break
       //case 0x00000100: PrintLog("  Вставка символа "); break
-      //case 0x00000200: PrintLog("  Нажатие VK_RETURN"); break
+      case 0x00000200: /*PrintLog("  Нажатие VK_RETURN");*/IsEnterPressed = true; break
       //case 0x00000400: PrintLog("  Нажатие VK_BACK"); break
       //case 0x00000800: PrintLog("  Нажатие VK_DELETE"); break
       //case 0x00001000: PrintLog("  Удаление текста при перетаскивании"); break
@@ -274,79 +299,84 @@ function OnTextChanged(lParam){
     try{
         var nCurSelStart = AkelPad.GetSelStart()
         var nCurLine = getLineFromChar(nCurSelStart) 
-        if (nModifiedLine !== nCurLine) nModifiedLine = nCurLine  //запоминаем модифицированную строку для ее постобработки fff
+        if (nModifiedLine !== nCurLine) nModifiedLine = nCurLine  // запоминаем модифицированную строку для ее постобработки fff
         
         if (IsInsert){
             IsInsert = false
-            var nPrevLine = getLineFromChar(nPrevSelStart)
-            //PrintLog(nPrevLine + " " + nCurLine)
-            if(nPrevLine !== nCurLine){     //проверяем больше ли размер вставленного текста чем 1 строка
-                var nStartPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nPrevLine, 0)
-                var nEndPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nCurLine, 0) 
-                nEndPos += AkelPad.SendMessage(hWndEdit, 193 /*EM_LINELENGTH*/, nEndPos, 0)
-                //Проверяем, если были вставлены только пробельные символы, то не обрабатываем их
-                if (!/\S{3,}/.test(AkelPad.GetTextRange(nPrevSelStart, nCurSelStart))) return 
-                PrintLog("Обрабатываем вставку")
-                PauseEventsFlag = true
-                StopRedraw()
-                //var re = new RegExp("^(?!\\s{16})\\s{1,15}");
+            if (bColumnSel){  // обработка вставки скопированного колоночного выделения
+                bColumnSel = 0
                 
-                var sModifText = AkelPad.GetTextRange(nStartPos, nEndPos) // Получаем строки, захватываемые вставленным текстом) за исключением
-//                PrintLog("nCurLine = " + nCurLine)
-//                PrintLog("sModifText = \n" + sModifText)
-                var nPrevLen = sModifText.length               // последней, в которую устанавливается курсор после вставки
-                var nIndentLen = nPrevSelStart - nStartPos
-                if (nIndentLen > 0){
-                    arRows = sModifText.split(/[\r\n]+/) 
-                    var re = /\S/
-                    var off = arRows[0].search(re)
-                    //PrintLog("off1 = " + off)
-                    if (off > -1) nIndentLen = off
-                    off = undefined
-                    for(var i = 1; i < arRows.length; ++arRows){
-                        off2 = arRows[i].search(re)
-                        if (off === undefined){
-                            off = off2
-                            if (arRows[0].search(/[\{\[(]\s*$/) > -1) off -= getTabSize()
-                            if (off <= 0) break
-                        }else{
-                            if(Off > off2) Off = off2
-                        }                            
-                    } 
-                    //if(off < 0) off = 0
-                    //PrintLog("off = " + off)
-                    nIndentLen -= off
-                    //PrintLog("nIndentLen = " + nIndentLen)
-                    if(nIndentLen > 0){
-                        sIndent = Space(nIndentLen)
-                        //PrintLog("sIndent = |" + sIndent + "|")
-                        re = /([\r\n]+)/gm
-                        sModifText = sModifText.replace(re, "$1" + sIndent)
-                        //PrintLog("sModifText = " + sModifText)
-                    }else if(nIndentLen < 0){
-                        //RegExp("^(?!\\s{16})\\s{1,15}")
-                        //re = new RegExp("([\r\n]+) {" + -nIndentLen + "}", "g")
-                        re = new RegExp("([\r\n]+) {" + -nIndentLen + "}", "gm")
-                        //PrintLog("re = " + re)
-                        sModifText = sModifText.replace(re, "$1")
-                        //PrintLog("sModifText = \n" + sModifText)
+            } else {
+                var nPrevLine = getLineFromChar(nPrevSelStart)
+                //PrintLog(nPrevLine + " " + nCurLine)
+                if(nPrevLine !== nCurLine){     //проверяем больше ли размер вставленного текста чем 1 строка
+                    var nStartPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nPrevLine, 0)
+                    var nEndPos = AkelPad.SendMessage(hWndEdit, 187 /*EM_LINEINDEX*/, nCurLine, 0) 
+                    nEndPos += AkelPad.SendMessage(hWndEdit, 193 /*EM_LINELENGTH*/, nEndPos, 0)
+                    //Проверяем, если были вставлены только пробельные символы, то не обрабатываем их
+                    if (!/\S{3,}/.test(AkelPad.GetTextRange(nPrevSelStart, nCurSelStart))) return 
+                    PrintLog("Обрабатываем вставку")
+                    PauseEventsFlag = true
+                    StopRedraw()
+                    //var re = new RegExp("^(?!\\s{16})\\s{1,15}");
+                    
+                    var sModifText = AkelPad.GetTextRange(nStartPos, nEndPos) // Получаем строки, захватываемые вставленным текстом) за исключением
+    //                PrintLog("nCurLine = " + nCurLine)
+    //                PrintLog("sModifText = \n" + sModifText)
+                    var nPrevLen = sModifText.length               // последней, в которую устанавливается курсор после вставки
+                    var nIndentLen = nPrevSelStart - nStartPos
+                    if (nIndentLen > 0){
+                        arRows = sModifText.split(/[\r\n]+/) 
+                        var re = /\S/
+                        var off = arRows[0].search(re)
+                        //PrintLog("off1 = " + off)
+                        if (off > -1) nIndentLen = off
+                        off = undefined
+                        for(var i = 1; i < arRows.length; ++arRows){
+                            off2 = arRows[i].search(re)
+                            if (off === undefined){
+                                off = off2
+                                if (arRows[0].search(/[\{\[(]\s*$/) > -1) off -= getTabSize()
+                                if (off <= 0) break
+                            }else{
+                                if(Off > off2) Off = off2
+                            }                            
+                        } 
+                        //if(off < 0) off = 0
+                        //PrintLog("off = " + off)
+                        nIndentLen -= off
+                        //PrintLog("nIndentLen = " + nIndentLen)
+                        if(nIndentLen > 0){
+                            sIndent = Space(nIndentLen)
+                            //PrintLog("sIndent = |" + sIndent + "|")
+                            re = /([\r\n]+)/gm
+                            sModifText = sModifText.replace(re, "$1" + sIndent)
+                            //PrintLog("sModifText = " + sModifText)
+                        }else if(nIndentLen < 0){
+                            //RegExp("^(?!\\s{16})\\s{1,15}")
+                            //re = new RegExp("([\r\n]+) {" + -nIndentLen + "}", "g")
+                            re = new RegExp("([\r\n]+) {" + -nIndentLen + "}", "gm")
+                            //PrintLog("re = " + re)
+                            sModifText = sModifText.replace(re, "$1")
+                            //PrintLog("sModifText = \n" + sModifText)
+                        }
+                        //sModifText = addIndents(sModifText, sIndent)    // добавляем отступы
                     }
-                    //sModifText = addIndents(sModifText, sIndent)    // добавляем отступы
+                    var m = sModifText.match(/[\r\n]+[^\r\n]*$/)
+                    var sLastRow = m[0]
+                    sModifText = sModifText.substring(0, m.index)
+                    /*PrintLog("sLastRow = \n" + sLastRow)
+                    PrintLog("sModifText = \n" + sModifText)*/
+                    
+                    sModifText = normalizeSpaces(sModifText) + sLastRow // выравниваем пробелы
+                    AkelPad.SetSel(nStartPos, nEndPos)
+                    AkelPad.ReplaceSel(sModifText)                      // Вставляем в редактор обработанный текст
+                    nCurSelStart += sModifText.length - nPrevLen        // Восстанавливаем положение курсора с учетом изменившейся длины нормализованного текста
+                    AkelPad.SetSel(nCurSelStart, nCurSelStart)
+                    
+                    StartRedraw()
+                    PauseEventsFlag = false
                 }
-                var m = sModifText.match(/[\r\n]+[^\r\n]*$/)
-                var sLastRow = m[0]
-                sModifText = sModifText.substring(0, m.index)
-                /*PrintLog("sLastRow = \n" + sLastRow)
-                PrintLog("sModifText = \n" + sModifText)*/
-                
-                sModifText = normalizeSpaces(sModifText) + sLastRow // выравниваем пробелы
-                AkelPad.SetSel(nStartPos, nEndPos)
-                AkelPad.ReplaceSel(sModifText)                      // Вставляем в редактор обработанный текст
-                nCurSelStart += sModifText.length - nPrevLen        // Восстанавливаем положение курсора с учетом изменившейся длины нормализованного текста
-                AkelPad.SetSel(nCurSelStart, nCurSelStart)
-                
-                StartRedraw()
-                PauseEventsFlag = false
             }
         } else if (IsMove){
             IsMove = false
@@ -376,6 +406,7 @@ function OnTextChanged(lParam){
             
             StartRedraw()
             PauseEventsFlag = false
+        
         }
     }catch(e){
         PrintLog("Ошибка в OnTextChanged: " + e.description)
@@ -391,24 +422,24 @@ function getLineFromChar(nPos){
     return AkelPad.SendMessage(hWndEdit, 1078 /*EM_EXLINEFROMCHAR*/, 0, nPos)
 }
 //Аналог Space() в VBS. Получение строки, заданной длины, заполненной пробелами
-var spaceData
-function Space(cnt){
-    if (!spaceData){
-        spaceData = {
-          spaceBuf: "",  
-          bufLen: 0        
-        }
-    }
-    with(spaceData){
-        if (bufLen < cnt){
-            var ar = Array(cnt-bufLen+1)
-            spaceBuf += ar.join(" ")
-            bufLen = cnt
-        }
-        
-        return spaceBuf.substring(0, cnt)
-    }
-}
+//var spaceData
+//function Space(cnt){
+//    if (!spaceData){
+//        spaceData = {
+//          spaceBuf: "",  
+//          bufLen: 0        
+//        }
+//    }
+//    with(spaceData){
+//        if (bufLen < cnt){
+//            var ar = Array(cnt-bufLen+1)
+//            spaceBuf += ar.join(" ")
+//            bufLen = cnt
+//        }
+//        
+//        return spaceBuf.substring(0, cnt)
+//    }
+//}
 //void DoEvents()
 //{
 //    MSG msg;

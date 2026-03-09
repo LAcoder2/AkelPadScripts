@@ -181,7 +181,8 @@ function OnTextChanging(lParam){
 function OnTextInsertBegin(lParam){PrintLog("Перед вставкой");}
 function OnTextInsertEnd(lParam){              //111fszzfsz g
     PrintLog("После вставки")    
-    var nCurSelStart = AkelPad.GetSelStart()
+    var nCurSelStart = AkelPad.GetSelStart() 
+    PrintLog(nPrevSelStart + " " + nCurSelStart)
     try{
       if (InsertFlag){
           var sInsText = AkelPad.GetTextRange(nPrevSelStart, nCurSelStart)
