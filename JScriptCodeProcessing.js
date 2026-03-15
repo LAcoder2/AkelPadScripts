@@ -81,6 +81,7 @@ function startProcessing(){
 //      //Члены AkelEdit
 //      AEHDOC docFrom;             //Дескриптор документа. См. сообщение AEM_CREATEDOCUMENT.
 //    } AENMHDR;
+//    48 (AECHARRANGE crSel) + ptrSz(AELINEDATA *lpLine) + ptrsz * 2 (wchar_t *wpLine)
 //                                  //size 16+24+12+4+4+8=68 / 32+48+24+4+4+16=128 
 //    typedef struct {         //size offset 
 //      AENMHDR hdr;           //16/32    00  
@@ -120,7 +121,7 @@ function OnSelChanging(lParam){
         if (!IsTabPressed) IsTabPressed = true
     else
         if (IsTabPressed) IsTabPressed = false
-    if (oSys.Call("user32::GetAsyncKeyState", 0xd/*VK_RETURN*/)) IsEnterPressed = true
+    //if (oSys.Call("user32::GetAsyncKeyState", 0xd/*VK_RETURN*/)) IsEnterPressed = true
 }
 var sLine2
 function OnSelChanged(lParam){
@@ -148,20 +149,20 @@ function OnSelChanged(lParam){
                     nDif = sLine.length - nDif
                     
                     PauseEventsFlag = true
-                    //StopRedraw() // Отключаем перерисовку 
+                    StopRedraw() // Отключаем перерисовку 
                     
-                    //PrintLog("IsEnterPressed = " + IsEnterPressed)
                     if(IsEnterPressed){
                         IsEnterPressed = false
                         //PrintLog("IsEnterPressed " + sLine.charAt(sLine.length - 1))
-                        if (sLine.charAt(sLine.length - 1) === "{"){
+                        //if (sLine.charAt(sLine.length - 1) === "{"){
+                        if (AkelPad.GetTextRange(nPrevSelStart -1 , nPrevSelStart) === "{"){
                             var nIndent = sLine.search(/\S/)
                             //PrintLog("nIndent = " + nIndent)
                             if (nIndent === -1) nIndent = 0
                             var sIndent = Space(nIndent)
                             var nTabSize = getTabSize()
                             var sRBraket = "}"
-                            if (AkelPad.GetTextRange(nSelStart, nSelStart+1) === sRBraket) sRBraket = ""  
+                            if (AkelPad.GetTextRange(nSelStart, nSelStart + 1) === sRBraket) sRBraket = ""  
                             //PrintLog("sIndent = |" + sIndent + "|\nsRBraket = " + sRBraket)
                             sLine += "\r" + Space(nIndent + nTabSize * 2) + "\r" + sIndent + sRBraket
                             //PrintLog("sLine =\n" + sLine.replace(/ /g, "_"))
@@ -177,33 +178,49 @@ function OnSelChanged(lParam){
                         }
                     }
                     
+                    //DoEvents()
                     AkelPad.SetSel(nBgnPos, nEndPos)
+                    //DoEvents()
+                    WScript.Sleep(100)
                     AkelPad.ReplaceSel(sLine)
+                    //DoEvents()
                     AkelPad.SetSel(nSelStart, nSelEnd)
-                    //StartRedraw() //Разблокируем перерисовку
+                    
+                    StartRedraw() //Разблокируем перерисовку
                     PauseEventsFlag = false                 
                 }
                 nModifiedLine = -1
             }
         }catch(e){
-            PrintLog("Ошибка в OnSelChanged: " + e.description)
-            //StartRedraw()
+            StartRedraw()
             PauseEventsFlag = true            
+            PrintLog("Ошибка в OnSelChanged: " + e.description)
         }                                     
     }
 }
 
 function OnTextChanging(lParam){
     //PrintLog("Перед изменением")
-    //if (oSys.Call("user32::GetAsyncKeyState", 0xd/*VK_RETURN*/)) IsEnterPressed = true
+    if (oSys.Call("user32::GetAsyncKeyState", 0xd/*VK_RETURN*/)) IsEnterPressed = true
     with(AkelPad){
         var dwType = MemRead(_PtrAdd(lParam, dwTypeOff/*см. WitnEvents.js*/), 3/*DT_DWORD*/)          
         bColumnSel = MemRead(_PtrAdd(lParam, 108), 3/*DT_DWORD*/)     //флаг колоночного выделения777  
 //        var crRichSelMin = MemRead(_PtrAdd(lParam, 112), 2/*DT_QWORD*/)   
 //        var crRichSelMax = MemRead(_PtrAdd(lParam, 112+8), 2/*DT_QWORD*/)               
         nPrevSelStart = GetSelStart()
-        if (bColumnSel) nPrevSelEnd = GetSelEnd()
+        if (bColumnSel) nPrevSelEnd = GetSelEnd() 
+        //48 (AECHARRANGE crSel) + ptrSz(AELINEDATA *lpLine) + ptrsz * 2 (wchar_t *wpLine)
         //sPrevSelText = GetSelText()
+        //pLineData = AkelPad.MemRead(_PtrAdd(lParam, 32 + ptrSz * 4), 2 /*DT_QWORD*/)
+//        var ptrSz = (_X64) ? 8 : 4
+//        var ciCaretOff = (_X64) ? 80 : 40
+//        pLineData = AkelPad.MemRead(_PtrAdd(lParam, ciCaretOff + ptrSz), 2 /*DT_QWORD*/)
+//        pwpLine = AkelPad.MemRead(_PtrAdd(pLineData, ptrSz * 2), 2)
+//        if (typeof(pwpLine) ==="number"){
+//            PrintLog(pwpLine)
+//        }         
+//        var sLine = AkelPad.MemRead(pwpLine, 1 /*DT_UNICODE*/)
+//        PrintLog("sLine = \n" + sLine)
     }
     var nCurLine = getLineFromChar(nPrevSelStart)
     if (nModifiedLine !== nCurLine) nModifiedLine = nCurLine    
@@ -296,17 +313,25 @@ function OnTextChanged(lParam){
        IsTabPressed = false
        return
     }
-    try{
-        var nCurSelStart = AkelPad.GetSelStart()
-        var nCurLine = getLineFromChar(nCurSelStart) 
-        if (nModifiedLine !== nCurLine) nModifiedLine = nCurLine  // запоминаем модифицированную строку для ее постобработки fff
-        
-        if (IsInsert){
+    var nCurSelStart = AkelPad.GetSelStart()
+    var nCurLine = getLineFromChar(nCurSelStart) 
+    if(nModifiedLine !== nCurLine){
+        nModifiedLine = nCurLine  // запоминаем модифицированную строку для ее постобработки fff
+    }/*else{
+        if (!IsEnterPressed) {
+        } else {
+            IsEnterPressed = false        
+            PrintLog("Сброс флага IsEnterPressed")
+        }
+    }*/
+    
+    try{        
+        if(IsInsert){
             IsInsert = false
-            if (bColumnSel){  // обработка вставки скопированного колоночного выделения
+            if(bColumnSel){  // обработка вставки скопированного колоночного выделения
                 bColumnSel = 0
                 
-            } else {
+            }else{
                 var nPrevLine = getLineFromChar(nPrevSelStart)
                 //PrintLog(nPrevLine + " " + nCurLine)
                 if(nPrevLine !== nCurLine){     //проверяем больше ли размер вставленного текста чем 1 строка
@@ -440,6 +465,81 @@ function getLineFromChar(nPos){
 //        return spaceBuf.substring(0, cnt)
 //    }
 //}
+//typedef struct tagMSG {
+//  HWND   hwnd;      // [0x00] размер: 4/8 байт (зависит от разрядности)
+//  UINT   message;   // [0x04/0x08] размер: 4 байта
+//  WPARAM wParam;    // [0x08/0x0C] размер: 4/8 байт (зависит от разрядности)
+//  LPARAM lParam;    // [0x0C/0x10] размер: 4/8 байт (зависит от разрядности)
+//  DWORD  time;      // [0x10/0x18] размер: 4 байта
+//  POINT  pt;        // [0x14/0x1C] размер: 8 байт (2 x 4 байта)
+//  DWORD  lPrivate;  // [0x1C/0x24] размер: 4 байта
+//} MSG;              // Общий размер: 0x20 (32) / 0x28 (40) байт
+
+//AkelPad.Include("log.js"); var oSys=AkelPad.SystemFunction(); test_DoEvents(1, 700)
+function test_DoEvents(num, interval){
+    var tmStart = new Date()
+    var dif = 0
+    if (num) {test_DoEvents(0, 1000)} else {DoEvents(); WScript.Sleep(300)}
+    //while(!oSys.Call("user32::GetAsyncKeyState", 9)){
+    while(dif < 10000){
+        DoEvents()
+        WScript.Sleep(interval)
+        PrintLog(num)
+        dif = new Date() - tmStart
+    }
+    PrintLog("Оконочание цикла " + num)
+}   
+var sMsgBuf, pMSG, pwParam
+function DoEvents(){
+    if (pMSG){
+    } else {
+        var sMsgBuf = new Array(21).join("\0")  // 40 bytes
+        pMSG = AkelPad.MemStrPtr(sMsgBuf)
+        pwParam = _PtrAdd(pMSG, 0x0C)
+    }
+    
+    var result 
+    while(oSys.Call("user32::PeekMessageW", pMSG, 0, 0, 0, 0/*PM_NOREMOVE*/)){
+        result = oSys.Call("user32::GetMessageW", pMSG, 0, 0, 0)
+        if(result === 0){  // WM_QUIT             
+            //var wParam = AkelPad.MemRead(_PtrAdd(pMSG, 0x0C), 2 /*DT_QWORD*/)
+            var wParam = AkelPad.MemRead(pwParam, 2 /*DT_QWORD*/)
+            
+            oSys.Call("user32::PostQuitMessage", wParam)
+            break
+        } else if (result === -1){
+            // Handle errors/exit application, etc. 
+            PrintLog("DoEvents: Handle errors/exit application, etc. !!!")
+        } else {
+            oSys.Call("user32::TranslateMessage", pMSG)
+            oSys.Call("user32::DispatchMessage", pMSG)
+        }  
+    } 
+    //PrintLog(_PtrAdd(pMSG, 0x0c) + "    " + pMSG + 0x0c)
+}
+//AkelPad.Include("log.js"); ptrTest()
+function ptrTest(){
+    var sMSG = "Hellow World and all!" 
+    //var pMSG = AkelPad.MemStrPtr(sMSG)
+    //var pwParam = _PtrAdd(pMSG, 0x0C)
+    var wParam = AkelPad.MemRead(_PtrAdd(AkelPad.MemStrPtr(sMSG), 0x0C), 2 /*DT_QWORD*/)
+    PrintLog(wParam)  // должно быть 9007628758548594 
+}   
+//Результат test_DoEvents (плохой, не работает так как надо):
+//0
+//0
+//0
+//0
+//0
+//0
+//0
+//0
+//0
+//0
+//Оконочание цикла 0
+//1
+//Оконочание цикла 1
+
 //void DoEvents()
 //{
 //    MSG msg;
@@ -456,7 +556,7 @@ function getLineFromChar(nPos){
 //        {
 //             // Handle errors/exit application, etc.
 //        }
-//        Else
+//        else
 //        {
 //            ::TranslateMessage(&msg);
 //            :: DispatchMessage(&msg);
