@@ -1,0 +1,215 @@
+﻿AkelPad.Include("log.js")
+AkelPad.Include("MemHelp.js")
+var hMainWnd=AkelPad.GetMainWnd()
+
+testRegisterHotkey()
+function testRegisterHotkey(){
+    //RegisterHotkey("TabSwitch.js", GetHotkeyCode(9, true)) // регистрация обработчика Ctrl+Tab
+    //RegisterHotkey("TabSwitch.js", 0)                      // разрегистрация обработчика
+    //PrintLog(RegisterHotkey("Test3.js", 0))     
+    PrintLog(RegisterHotkey("Test3.js", 593)) 
+}
+// Получить код клавиатурного сочетания. Пример:
+// WScript.Echo(GetHotkeyCode(9, true)) //получение кода сочетания Ctrl + Tab
+function GetHotkeyCode(keyCode, ctrl, shift, alt) {
+    if (shift) keyCode |= 0x100
+    if (ctrl)  keyCode |= 0x200
+    if (alt)   keyCode |= 0x400
+    return keyCode;
+}
+// Регистрация клавиатурного сочетания. Пример (назначение сочетания Ctrl + Q для скрипта TestHotkey.js):
+// RegisterHotkey("TestHotKey.js", GetHotkeyCode("Q".charCodeAt(0), true)) //
+function RegisterHotkey(wszScriptName, wHotkey){
+//    try{
+//    var nstep = 0
+    var pfElement       // Указатель на структуру функции плагина
+    var wszHotkeyOwner = MakeStrBuff(260) // Имя владельца, если клавиша занята
+    
+    // Формируем полное имя функции для регистрации: "Scripts::Main::имя_скрипта"
+    var wszPrefix = "Scripts::Main::"
+    var wszFunction = wszPrefix + wszScriptName
+      
+    //Проверяем, не занята ли уже эта комбинация клавиш
+    var nOwner = AkelPad.SendMessage(hMainWnd, 1338/*AKD_CHECKHOTKEY*/, wHotkey, wszHotkeyOwner.StrPtr())
+    if (!nOwner){
+        //Пытаемся найти уже зарегистрированную функцию с таким именем
+        //if (pfElement = (PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)wszFunction, 0)) {
+        if (pfElement = AkelPad.SendMessage(hMainWnd, 1331/*AKD_DLLFINDW*/, wszFunction.StrPtr(), 0)) { 
+            // Функция уже существует - просто обновляем её горячую клавишу
+            var opf = makePLUGINFUNCTIONwrp(pfElement) // Создаем объект-враппер структуры PLUGINFUNCTION
+            
+			//pfElement->wHotkey = wHotkey;            
+            opf.wHotkeySet(wHotkey) 
+            //PrintLog("Замена сочетания")
+            // Если клавиша сброшена (0) и функция не активна и не в автозагрузке то удаляем её из системы
+			//if (!pfElement->wHotkey && !pfElement->bRunning && !pfElement->bAutoLoad)
+			//	SendMessage(hMainWnd, AKD_DLLDELETE, 0, (LPARAM)pfElement);
+			if(!wHotkey && !opf.bRunning() && !opf.bAutoLoad()){
+			    AkelPad.SendMessage(hMainWnd, 1335/*AKD_DLLDELETE*/, 0, pfElement)
+			    //PrintLog("Удаление обработчика")
+			}
+			
+        } else {
+            // 3.2 Функция не найдена - создаем новую, если есть клавиша для назначения
+			if (wHotkey) {
+			    var spa = MakeStrBuff(16) // выделяем память под структуру PLUGINADDW, 32/2 - размер структуры (в x64)
+			    var ppa = spa.StrPtr()
+                var opa = makePLUGINADDWwrp(ppa)            // Создаем объект-враппер структуры PLUGINADDW
+			    //pa.pFunction = wszFunction;   
+                opa.pFunctionSet(wszFunction.StrPtr())      // Имя функции
+				//pa.wHotkey = wHotkey;  
+                opa.wHotkeySet(wHotkey)                         
+				//pa.PluginProc = HotkeyProc;   
+                var HotkeyProc = GetHotkeyProc()            // callback-Функция-обработчик
+                if (!HotkeyProc){
+                    WScript.Echo("Не получен адрес HotkeyProc (внутреняя процедура обработки хоткеев плагина Scripts), \n" +
+                                 "необходимой для регистарции клав. сочетаний!")
+                    return false
+                }
+				opa.PluginProcSet(HotkeyProc)
+				
+				// Регистрируем новую функцию в ядре AkelPad
+				//if (pfElement = (PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLADDW, 0, (LPARAM)&pa)) {
+				if (pfElement = AkelPad.SendMessage(hMainWnd, 1334/*AKD_DLLADDW*/, 0, ppa)){
+				    //PrintLog("Успешная регистрация новой функции в ядро AkelPad!")
+				    // Устанавливаем параметр для обработчика - указатель на имя скрипта
+					// lpParameter будет передан в HotkeyProc при нажатии
+					// pfElement->lpParameter = pfElement->wszFunction + xstrlenW(wszPrefix)
+					opf = makePLUGINFUNCTIONwrp(pfElement)
+					opf.lpParameterSet(opf.wszFunctionPtr() + wszPrefix.length * 2)
+				}
+			}
+        }
+        return true
+    } else {
+        var nLen = wszHotkeyOwner.indexOf("\0", 0)
+        var sHotkeyOwner = wszHotkeyOwner.substr(0, nLen)
+        if (wszFunction !== sHotkeyOwner) {
+            WScript.Echo("Комбинация уже занята действием:\n" + sHotkeyOwner)
+            return false
+        } else 
+            return true
+    }
+//    }catch(e){
+//        PrintLog(e.description + "\n" + nstep)
+//    }
+}
+
+// var hMainWnd = AkelPad.GetMainWnd(); AkelPad.Include("log.js"); AkelPad.Include("MemHelp.js"); testGetHotkeyProc()
+function testGetHotkeyProc(){
+    PrintLog(GetHotkeyProc(9))
+    PrintLog(GetHotkeyProc(521))
+    PrintLog(GetHotkeyProc(587))
+    PrintLog(GetHotkeyProc(265))
+}
+function GetHotkeyProc(wHotkey){
+    if(!wHotkey) wHotkey = 265 //Shift + Tab
+    var wszHotkeyOwner = MakeStrBuff(260) // Имя процедуры, назначенной на клавишу
+    var pwszHotkeyOwner = StrPtr(wszHotkeyOwner)
+    if (AkelPad.SendMessage(hMainWnd, 1338/*AKD_CHECKHOTKEY*/, wHotkey, pwszHotkeyOwner)){
+        var pfElement = AkelPad.SendMessage(hMainWnd, 1331/*AKD_DLLFINDW*/, pwszHotkeyOwner, 0)
+        if (pfElement) {
+            var opf = makePLUGINFUNCTIONwrp(pfElement)
+            return opf.PluginProc() 
+        } 
+    } 
+}
+
+// Создание объекта-враппера структуры PLUGINADDW
+var oPLUGINADDWwrp
+function makePLUGINADDWwrp(ppa){
+    if (!oPLUGINADDWwrp) 
+        oPLUGINADDWwrp = makeStructWrapper(0, 
+                            "pFunction", 0, 2,
+                            "wHotkey", (_X64 ? 8 : 4), 4,  
+                            "bAutoLoad", (_X64 ? 12 : 8), 3,
+                            "PluginProc", (_X64 ? 16 : 12), 2,
+                            "lpParameter", (_X64 ? 24 : 16), 2)
+    var opa = shallowCopyObject(oPLUGINADDWwrp)
+    if (ppa) opa.pStruct = ppa 
+    opa.size = _X64 ? 32 : 20      
+    return opa
+} 
+/*typedef struct {
+  const wchar_t *pFunction;   // 0 : 0      Function name, format "Plugin::Function".
+  WORD wHotkey;               // 8 : 4      Function hotkey. See HKM_GETHOTKEY message return value (MSDN).
+  BOOL bAutoLoad;             // 12 : 8     TRUE  if function has autoload flag.
+                              //            FALSE if function has no autoload flag.
+  PLUGINPROC PluginProc;      // 16 : 12    Function procedure.
+  void *lpParameter;          // 24 : 16    Procedure parameter.
+} PLUGINADDW;                 // 32 : 20    Общий размер*/  
+
+// Создание объекта-враппера структуры PLUGINFUNCTION
+var oPLUGINFUNCTIONwrp
+function makePLUGINFUNCTIONwrp(ppf){
+    if(!oPLUGINFUNCTIONwrp)
+        oPLUGINFUNCTIONwrp = makeStructWrapper(0, 
+                                /*"next", 0, 2,
+                                "prev", (_X64 ? 8 : 4), 2,*/
+                                "wszFunction", (_X64 ? 0x11C : 0x110), 1, -1,
+                                "wHotkey", (_X64 ? 0x328 : 0x31C), 4,  
+                                "bAutoLoad", (_X64 ? 0x32C : 0x320), 3,
+                                "bRunning", (_X64 ? 0x330 : 0x324), 3,
+                                "PluginProc", (_X64 ? 0x338 : 0x328), 2,
+                                "lpParameter", (_X64 ? 0x340 : 0x32C), 2)
+    var opf = shallowCopyObject(oPLUGINFUNCTIONwrp) 
+    if (ppf) opf.pStruct = ppf 
+    opf.size = _X64 ? 0x350 : 0x334     
+    return opf                                           
+} 
+/*typedef struct {      
+    struct _PLUGINFUNCTION *next;     // 0x00 : 0x00    — указатель на следующий элемент в списке
+    struct _PLUGINFUNCTION *prev;     // 0x08 : 0x04    — указатель на предыдущий элемент в списке
+    const BYTE *pFunction;            // 0x10 : 0x08    — указатель на имя функции
+                                      //                  Формат: "Plugin::Function"
+                                      //                  const char *pFunction      если bOldWindows == TRUE
+                                      //                  const wchar_t *pFunction   если bOldWindows == FALSE
+    char szFunction[MAX_PATH];        // 0x18 : 0x0C    — имя функции в ANSI кодировке (260 байт)
+    wchar_t wszFunction[MAX_PATH];    // 0x11C : 0x110  — имя функции в Unicode кодировке (520 байт)
+                                      //                  Максимум MAX_PATH символов (обычно 260)
+    int nFunctionLen;                 // 0x324 : 0x318  — длина имени функции в символах
+    WORD wHotkey;                     // 0x328 : 0x31C  — горячая клавиша функции
+                                      //                  Формат: старший байт = флаги модификаторов (HOTKEYF_*)
+                                      //                  младший байт = виртуальный код клавиши (VK_*)
+                                      //                  См. документацию по HKM_GETHOTKEY в MSDN
+    BOOL bAutoLoad;                   // 0x32C : 0x320  — флаг автозагрузки функции
+                                      //                  TRUE  — функция загружается автоматически при старте
+                                      //                  FALSE — функция не загружается автоматически
+    BOOL bRunning;                    // 0x330 : 0x324  — флаг выполнения функции
+                                      //                  TRUE  — функция выполняется в данный момент
+                                      //                  FALSE — функция не выполняется
+    PLUGINPROC PluginProc;            // 0x338 : 0x328  — указатель на функцию-обработчик
+                                      //                  Прототип: BOOL CALLBACK PluginProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
+    void *lpParameter;                // 0x340 : 0x32C  — пользовательские данные для обработчика
+                                      //                  В случае Scripts плагина: указатель на имя скрипта
+    int nRefCount;                    // 0x348 : 0x330  — счётчик ссылок (внутреннее использование)
+                                      //                  Используется для управления временем жизни структуры
+} PLUGINFUNCTION;                     // 0x350 : 0x334  — размер структуры (820/848 байт)*/
+
+//PrintLog(" ")
+//testtest(); WScript.Quit()
+function testtest(){
+    var wszHotkeyOwner = MakeStrBuff(260) // Имя владельца, если клавиша занята
+    var wHotkey = 593
+    // Формируем полное имя функции для регистрации: "Scripts::Main::имя_скрипта"
+    var wszPrefix = "Scripts::Main::"
+    //var wszFunction = wszPrefix + wszScriptName
+    
+    //Проверяем, не занята ли уже эта комбинация клавиш
+    var nOwner = AkelPad.SendMessage(hMainWnd, 1338/*AKD_CHECKHOTKEY*/, wHotkey, wszHotkeyOwner.StrPtr())
+    if (!nOwner) return
+    var pfElement = AkelPad.SendMessage(hMainWnd, 1331/*AKD_DLLFINDW*/, wszHotkeyOwner.StrPtr(), 0)
+    var opf = makePLUGINFUNCTIONwrp(pfElement) 
+//    try{
+    var pnext
+    PrintLog(opf.PluginProc())
+    
+    while(pnext = opf.prev()){
+       opf.pStruct = pnext
+       PrintLog(opf.PluginProc())
+    }
+//    }catch(e){
+//        PrintLog(e.description)
+//        //PrintLog(opf)
+//    }
+}
