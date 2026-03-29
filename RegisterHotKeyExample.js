@@ -19,6 +19,7 @@ function GetHotkeyCode(keyCode, ctrl, shift, alt) {
 }
 // Регистрация клавиатурного сочетания. Пример (назначение сочетания Ctrl + Q для скрипта TestHotkey.js):
 // RegisterHotkey("TestHotKey.js", GetHotkeyCode("Q".charCodeAt(0), true)) //
+// Сделано по образцу одноименной функции в из исходных файла плагина Scripts (Scripts.c)
 function RegisterHotkey(wszScriptName, wHotkey){
 //    try{
 //    var nstep = 0
@@ -48,7 +49,6 @@ function RegisterHotkey(wszScriptName, wHotkey){
 			    AkelPad.SendMessage(hMainWnd, 1335/*AKD_DLLDELETE*/, 0, pfElement)
 			    //PrintLog("Удаление обработчика")
 			}
-			
         } else {
             // 3.2 Функция не найдена - создаем новую, если есть клавиша для назначения
 			if (wHotkey) {

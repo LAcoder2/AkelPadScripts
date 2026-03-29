@@ -1,4 +1,4 @@
-﻿//test_makeStructWrapper()
+﻿test_makeStructWrapper()
 function test_makeStructWrapper(){
     AkelPad.Include("log.js")
     
@@ -25,7 +25,7 @@ function test_makeStructWrapper(){
 
 function makeStructWrapper(){
     var obj = {"pStruct": arguments[0]}
-    for (var i = 3; i < arguments.length; i +=3){
+    for (var i = 3; i < arguments.length; i += 3){
         var fieldName = arguments[i-2]
         var nOffset = arguments[i-1]
         var nType = arguments[i]
@@ -35,9 +35,9 @@ function makeStructWrapper(){
         else
             nLength = -1
             
-        obj[fieldName] = fieldRead(nOffset, nType, nLength)                 // прочитать значение поля
-        obj[fieldName + "Set"] = fieldWrite(nOffset, nType, nLength)        // записать значение
-        obj[fieldName + "Ptr"] = fieldPtr(nOffset)                          // получить указатель поля
+        obj[fieldName] = fieldRead(nOffset, nType, nLength)             // прочитать значение поля
+        obj[fieldName + "Set"] = fieldWrite(nOffset, nType, nLength)    // записать значение
+        obj[fieldName + "Ptr"] = fieldPtr(nOffset)                      // получить указатель поля
     }
     return obj
     
