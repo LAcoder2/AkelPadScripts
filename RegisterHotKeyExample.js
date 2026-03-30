@@ -23,8 +23,8 @@ function GetHotkeyCode(keyCode, ctrl, shift, alt) {
 function RegisterHotkey(wszScriptName, wHotkey){
 //    try{
 //    var nstep = 0
-    var pfElement       // Указатель на структуру функции плагина
-    var wszHotkeyOwner = MakeStrBuff(260) // Имя владельца, если клавиша занята
+    var pfElement                           // Указатель на структуру функции плагина
+    var wszHotkeyOwner = makeStrBuff(260)   // Имя владельца, если клавиша занята
     
     // Формируем полное имя функции для регистрации: "Scripts::Main::имя_скрипта"
     var wszPrefix = "Scripts::Main::"
@@ -38,9 +38,6 @@ function RegisterHotkey(wszScriptName, wHotkey){
         if (pfElement = AkelPad.SendMessage(hMainWnd, 1331/*AKD_DLLFINDW*/, wszFunction.StrPtr(), 0)) { 
             // Функция уже существует - просто обновляем её горячую клавишу
             var opf = makePLUGINFUNCTIONwrp(pfElement) // Создаем объект-враппер структуры PLUGINFUNCTION
-            
-			//pfElement->wHotkey = wHotkey;            
-            opf.wHotkeySet(wHotkey) 
             //PrintLog("Замена сочетания")
             // Если клавиша сброшена (0) и функция не активна и не в автозагрузке то удаляем её из системы
 			//if (!pfElement->wHotkey && !pfElement->bRunning && !pfElement->bAutoLoad)
@@ -48,11 +45,11 @@ function RegisterHotkey(wszScriptName, wHotkey){
 			if(!wHotkey && !opf.bRunning() && !opf.bAutoLoad()){
 			    AkelPad.SendMessage(hMainWnd, 1335/*AKD_DLLDELETE*/, 0, pfElement)
 			    //PrintLog("Удаление обработчика")
-			}
+			} else opf.wHotkeySet(wHotkey)  //pfElement->wHotkey = wHotkey;
         } else {
             // 3.2 Функция не найдена - создаем новую, если есть клавиша для назначения
 			if (wHotkey) {
-			    var spa = MakeStrBuff(16) // выделяем память под структуру PLUGINADDW, 32/2 - размер структуры (в x64)
+			    var spa = makeStrBuff(16)   // выделяем память под структуру PLUGINADDW, 32/2 - размер структуры (в x64)
 			    var ppa = spa.StrPtr()
                 var opa = makePLUGINADDWwrp(ppa)            // Создаем объект-враппер структуры PLUGINADDW
 			    //pa.pFunction = wszFunction;   
@@ -104,7 +101,7 @@ function testGetHotkeyProc(){
 }
 function GetHotkeyProc(wHotkey){
     if(!wHotkey) wHotkey = 265 //Shift + Tab
-    var wszHotkeyOwner = MakeStrBuff(260) // Имя процедуры, назначенной на клавишу
+    var wszHotkeyOwner = makeStrBuff(260) // Имя процедуры, назначенной на клавишу
     var pwszHotkeyOwner = StrPtr(wszHotkeyOwner)
     if (AkelPad.SendMessage(hMainWnd, 1338/*AKD_CHECKHOTKEY*/, wHotkey, pwszHotkeyOwner)){
         var pfElement = AkelPad.SendMessage(hMainWnd, 1331/*AKD_DLLFINDW*/, pwszHotkeyOwner, 0)
@@ -130,14 +127,14 @@ function makePLUGINADDWwrp(ppa){
     opa.size = _X64 ? 32 : 20      
     return opa
 } 
-/*typedef struct {
-  const wchar_t *pFunction;   // 0 : 0      Function name, format "Plugin::Function".
-  WORD wHotkey;               // 8 : 4      Function hotkey. See HKM_GETHOTKEY message return value (MSDN).
-  BOOL bAutoLoad;             // 12 : 8     TRUE  if function has autoload flag.
+/*typedef struct {            // смещения (x64/x86) 
+  const wchar_t *pFunction;   // 0/0      Function name, format "Plugin::Function".
+  WORD wHotkey;               // 8/4      Function hotkey. See HKM_GETHOTKEY message return value (MSDN).
+  BOOL bAutoLoad;             // 12/8     TRUE  if function has autoload flag.
                               //            FALSE if function has no autoload flag.
-  PLUGINPROC PluginProc;      // 16 : 12    Function procedure.
-  void *lpParameter;          // 24 : 16    Procedure parameter.
-} PLUGINADDW;                 // 32 : 20    Общий размер*/  
+  PLUGINPROC PluginProc;      // 16/12    Function procedure.
+  void *lpParameter;          // 24/16    Procedure parameter.
+} PLUGINADDW;                 // 32/20    Общий размер*/  
 
 // Создание объекта-враппера структуры PLUGINFUNCTION
 var oPLUGINFUNCTIONwrp
@@ -189,7 +186,7 @@ function makePLUGINFUNCTIONwrp(ppf){
 //PrintLog(" ")
 //testtest(); WScript.Quit()
 function testtest(){
-    var wszHotkeyOwner = MakeStrBuff(260) // Имя владельца, если клавиша занята
+    var wszHotkeyOwner = makeStrBuff(260) // Имя владельца, если клавиша занята
     var wHotkey = 593
     // Формируем полное имя функции для регистрации: "Scripts::Main::имя_скрипта"
     var wszPrefix = "Scripts::Main::"

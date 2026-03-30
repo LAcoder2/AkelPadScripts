@@ -1,4 +1,4 @@
-﻿test_makeStructWrapper()
+﻿//test_makeStructWrapper()
 function test_makeStructWrapper(){
     AkelPad.Include("log.js")
     
@@ -29,18 +29,34 @@ function makeStructWrapper(){
         var fieldName = arguments[i-2]
         var nOffset = arguments[i-1]
         var nType = arguments[i]
-        var nLength
-        if (nType === 1 || nType === 0) 
-            nLength = arguments[++i]
-        else
-            nLength = -1
-            
-        obj[fieldName] = fieldRead(nOffset, nType, nLength)             // прочитать значение поля
-        obj[fieldName + "Set"] = fieldWrite(nOffset, nType, nLength)    // записать значение
-        obj[fieldName + "Ptr"] = fieldPtr(nOffset)                      // получить указатель поля
+        if (nType === 6){
+            var fnGetWrp = arguments[++i]
+            obj[fieldName] = fieldStruct(nOffset, fnGetWrp, fieldName)
+        } else {
+            var nLength
+            if (nType === 1 || nType === 0) 
+                nLength = arguments[++i]
+            else
+                nLength = -1
+                
+            obj[fieldName] = fieldRead(nOffset, nType, nLength)             // прочитать значение поля
+            obj[fieldName + "Set"] = fieldWrite(nOffset, nType, nLength)    // записать значение
+            obj[fieldName + "Ptr"] = fieldPtr(nOffset)                      // получить указатель поля
+        }
     }
     return obj
     
+    function fieldStruct(nOffset, fnGetWrp, fieldName){
+        var oWrp
+        return function (){
+            if (this.pStruct){
+                var pStruct = this.pStruct + nOffset
+                if (!oWrp || oWrp.pStruct !== pStruct) oWrp = fnGetWrp(pStruct)
+                //this[fieldName] = oWrp
+                return oWrp
+            }
+        }
+    }
     function fieldRead(nOffset, nType, nLength){
         return function (nType2, nLength2){
             if (this.pStruct)
@@ -67,13 +83,14 @@ function AllocString(pwStr, nLength){
     if(!nLength) nLength = -1
     return AkelPad.MemRead(pwStr, 1/*DT_UNICODE*/, nLength)
 }
+var AllocStringW = AllocString
 function AllocStringA(paStr, nLength){
     if(!nLength) nLength = -1
     return AkelPad.MemRead(paStr, 0/*DT_ANSI*/, nLength)
 }
 // Создание строки, заполненной нулями заданного размера (nLen)
 // предназначено для безопасного выделения памяти
-var MakeStrBuff = (function() {
+var makeStrBuff = (function() {
     var StrBuf = "";  // сохраняется между вызовами
     return function(nLen) {
         if (StrBuf.length < nLen) {
