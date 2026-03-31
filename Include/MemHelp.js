@@ -23,39 +23,70 @@ function test_makeStructWrapper(){
              st.specialityPtr())
 }
 
-function makeStructWrapper(){
-    var obj = {"pStruct": arguments[0]}
+function makeStructWrapper(pStruct){
+    var nstp = 0
+    try{
+    var oStruct = {pStruct: pStruct}
+    
     for (var i = 3; i < arguments.length; i += 3){
         var fieldName = arguments[i-2]
         var nOffset = arguments[i-1]
         var nType = arguments[i]
+        
         if (nType === 6){
             var fnGetWrp = arguments[++i]
-            obj[fieldName] = fieldStruct(nOffset, fnGetWrp, fieldName)
+            nstp = 1
+            //oStruct[fieldName] = fieldSubStruct1(nOffset, fnGetWrp)
+            oStruct[fieldName] = fieldSubStruct2(nOffset, fnGetWrp, oStruct, fieldName)
+            nstp = 2
         } else {
             var nLength
             if (nType === 1 || nType === 0) 
                 nLength = arguments[++i]
             else
                 nLength = -1
-                
-            obj[fieldName] = fieldRead(nOffset, nType, nLength)             // прочитать значение поля
-            obj[fieldName + "Set"] = fieldWrite(nOffset, nType, nLength)    // записать значение
-            obj[fieldName + "Ptr"] = fieldPtr(nOffset)                      // получить указатель поля
+            nstp = 3    
+            oStruct[fieldName] = fieldRead(nOffset, nType, nLength)             // прочитать значение поля
+            oStruct[fieldName + "Set"] = fieldWrite(nOffset, nType, nLength)    // записать значение
+            oStruct[fieldName + "Ptr"] = fieldPtr(nOffset)                      // получить указатель поля
+            nstp = 4
         }
     }
-    return obj
+    }catch(e){
+        PrintLog('Ошибка в makeStructWrapper()\n' + e.description + " " + nstp)
+    }
+    return oStruct
     
-    function fieldStruct(nOffset, fnGetWrp, fieldName){
-        var oWrp
+    function fieldSubStruct1(nOffset, fnGetWrp){ //v1
+        var oSubStruct
         return function (){
             if (this.pStruct){
-                var pStruct = this.pStruct + nOffset
-                if (!oWrp || oWrp.pStruct !== pStruct) oWrp = fnGetWrp(pStruct)
-                //this[fieldName] = oWrp
-                return oWrp
+                var pSubStruct = this.pStruct + nOffset
+                if (!oSubStruct) 
+                    oSubStruct = fnGetWrp(pSubStruct)
+                else if(oSubStruct.pStruct !== pSubStruct) 
+                    oSubStruct.pStruct = pSubStruct
+                return oSubStruct
             }
         }
+    }
+    function fieldSubStruct2(nOffset, fnGetWrp, oParentStruct, fieldName){ v2
+//        try{
+        var oSubStruct = oParentStruct[fieldName] = function (){
+            if (this.pStruct){
+                var pSubStruct = this.pStruct + nOffset
+                //PrintLog('12345 ' + typeof oSubStruct)
+                if (!oSubStruct.pStruct) 
+   /*oSubStruct = */fnGetWrp(pSubStruct, oSubStruct)  
+                else if(oSubStruct.pStruct !== pSubStruct) 
+                    oSubStruct.pStruct = pSubStruct
+                return oSubStruct
+            }
+        }
+            return oSubStruct
+//        } catch(e) {
+//            PrintLog('Ошибка в fieldSubStruct' + e.description) 
+//        }
     }
     function fieldRead(nOffset, nType, nLength){
         return function (nType2, nLength2){
@@ -100,8 +131,8 @@ var makeStrBuff = (function() {
     };
 })()
 //Поверхностное копирование объекта
-function shallowCopyObject(objInp){
-    var objOut = {}
+function shallowCopyObject(objInp, objOut){
+    if (!objOut) objOut = new Object()
     for(var key in objInp){
         objOut[key] = objInp[key]
     }
@@ -112,3 +143,39 @@ function StrPtr(sVar){return AkelPad.MemStrPtr(sVar)}
 String.prototype.StrPtr = function(){
     return AkelPad.MemStrPtr(this.toString())
 }
+
+//function MyClass() {
+//    // Возвращаем функцию, которая будет "методом по умолчанию"
+//    var defaultMethod = function(param) {
+//        return "Результат: " + param;
+//    };
+//    
+//    // Добавляем другие методы как свойства
+//    defaultMethod.otherMethod = function() {
+//        return "Другой метод";
+//    };
+//    
+//    return defaultMethod;
+//}
+//
+//var obj = MyClass();
+////WScript.Echo(obj("тест"));        // "Результат: тест"
+//WScript.Echo(obj());  // "Другой метод"
+
+//function testLock(){
+//        function fnCreate(){
+//            var ptr
+//            return [
+//                       function ptrGet(){return ptr},    
+//                       function ptrSet(newptr){ptr = newptr}
+//                   ]
+//        }
+//        var fnAr = fnCreate()
+//        ptrGet = fnAr[0]
+//        ptrSet = fnAr[1]
+//        
+//        ptrSet(123)
+//        PrintLog(ptrGet())
+//        ptrSet(22222)
+//        PrintLog(ptrGet())
+//}

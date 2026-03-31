@@ -11,7 +11,7 @@ AkelPad.Include("MemHelp.js")
 } AENTEXTCHANGE;            // 128/68   Общий размер.
 */
 try{
-    var nstp = 0
+    var nstp = -1
     var oTC = makeAENTEXTCHANGEwrp()
     nstp = 1
     var sBuf = makeStrBuff(oTC.size / 2)
@@ -23,11 +23,12 @@ try{
 //    oTC.crSel().ciMax().nCharInLineSet(752)
 //    PrintLog(oTC.crSel().ciMax().nCharInLine())
     var s = "Какая-то строка"
-    with(oTC.crSel().ciMax()){
+    PrintLog(typeof oTC.crSel().ciMax())
+    //PrintLog(typeof oTC.crSel.ciMax)
+    with(oTC.crSel.ciMax){
         lpLineSet(s.StrPtr())
         PrintLog(AllocString(lpLine()))
     }
-    
 }catch(e){
     PrintLog(e.description + " " + nstp)
 }
@@ -44,7 +45,7 @@ try{
   int nSelEnd;              // 40/28    Конечная позиция символа выделения в строке.
 } AELINEDATA;               // 48/32    Общий размер.*/
 var oAELINEDATAwrp
-function makeAELINEDATAwrp(pStruct){
+function makeAELINEDATAwrp(pStruct, oStruct){
     if(!oAELINEDATAwrp)
         oAELINEDATAwrp = makeStructWrapper(0, 
                                 "next", 0, 2,
@@ -58,7 +59,7 @@ function makeAELINEDATAwrp(pStruct){
                                 "nSelStart", (_X64 ? 36 : 24), 3,
                                 "nSelEnd", (_X64 ? 40 : 28), 3
                             )
-    var oStruct = shallowCopyObject(oAELINEDATAwrp) 
+    oStruct = shallowCopyObject(oAELINEDATAwrp, oStruct) 
     if (pStruct) oStruct.pStruct = pStruct 
     oStruct.size = _X64 ? 48 : 32     
     return oStruct                                           
@@ -69,14 +70,14 @@ function makeAELINEDATAwrp(pStruct){
   int nCharInLine;          // 16/8     Позиция символа в строке.
 } AECHARINDEX;              // 24/12    Общий размер.*/
 var oAECHARINDEXwrp
-function makeAECHARINDEXwrp(pStruct){
+function makeAECHARINDEXwrp(pStruct, oStruct){
     if(!oAECHARINDEXwrp)
         oAECHARINDEXwrp = makeStructWrapper(0, 
                                 "nLine", 0, 3,
                                 "lpLine", (_X64 ? 8 : 4), 2,
                                 "nCharInLine", (_X64 ? 16 : 8), 3
                             )
-    var oStruct = shallowCopyObject(oAECHARINDEXwrp) 
+    oStruct = shallowCopyObject(oAECHARINDEXwrp, oStruct) 
     if (pStruct) oStruct.pStruct = pStruct 
     oStruct.size = _X64 ? 24 : 12     
     return oStruct                                           
@@ -86,13 +87,13 @@ function makeAECHARINDEXwrp(pStruct){
   AECHARINDEX ciMax;        // 24/12    Индекс последнего символа в диапазоне.
 } AECHARRANGE;              // 48/24    Общий размер.*/
 var oAECHARRANGEwrp
-function makeAECHARRANGEwrp(pStruct){
+function makeAECHARRANGEwrp(pStruct, oStruct){
     if(!oAECHARRANGEwrp)
         oAECHARRANGEwrp = makeStructWrapper(0, 
                                 "ciMin", 0, 6, makeAECHARINDEXwrp,
                                 "ciMax", (_X64 ? 24 : 12), 6, makeAECHARINDEXwrp
                             )
-    var oStruct = shallowCopyObject(oAECHARRANGEwrp) 
+    oStruct = shallowCopyObject(oAECHARRANGEwrp, oStruct) 
     if (pStruct) oStruct.pStruct = pStruct 
     oStruct.size = _X64 ? 48 : 24     
     return oStruct                                           
@@ -104,7 +105,7 @@ function makeAECHARRANGEwrp(pStruct){
   AEHDOC docFrom;           // 20/12    Дескриптор документа. См. сообщение AEM_CREATEDOCUMENT.
 } AENMHDR;                  // 28/16    Общий размер.*/
 var oAENMHDRwrp
-function makeAENMHDRwrp(pStruct){
+function makeAENMHDRwrp(pStruct, oStruct){
     if(!oAENMHDRwrp)
         oAENMHDRwrp = makeStructWrapper(0, 
                                 "hwndFrom", 0, 2,
@@ -112,7 +113,7 @@ function makeAENMHDRwrp(pStruct){
                                 "code", (_X64 ? 16 : 8), 3,
                                 "docFrom", (_X64 ? 20 : 12), 2
                             )
-    var oStruct = shallowCopyObject(oAENMHDRwrp) 
+    oStruct = shallowCopyObject(oAENMHDRwrp, oStruct) 
     if (pStruct) oStruct.pStruct = pStruct 
     oStruct.size = _X64 ? 28 : 16     
     return oStruct                                           
@@ -122,13 +123,13 @@ function makeAENMHDRwrp(pStruct){
   INT_PTR cpMax;            // 8/4      Максимальное смещение.
 } CHARRANGE64;              // 16/8     Общий размер.*/
 var oCHARRANGE64wrp
-function makeCHARRANGE64wrp(pStruct){
+function makeCHARRANGE64wrp(pStruct, oStruct){
     if(!oCHARRANGE64wrp)
         oCHARRANGE64wrp = makeStructWrapper(0, 
                                 "cpMin", 0, 2,
                                 "cpMax", (_X64 ? 8 : 4), 2
                             )
-    var oStruct = shallowCopyObject(oCHARRANGE64wrp) 
+    oStruct = shallowCopyObject(oCHARRANGE64wrp, oStruct) 
     if (pStruct) oStruct.pStruct = pStruct 
     oStruct.size = _X64 ? 16 : 8     
     return oStruct                                           
@@ -143,7 +144,8 @@ function makeCHARRANGE64wrp(pStruct){
 } AENTEXTCHANGE;            // 128/68   Общий размер.
 */
 var oAENTEXTCHANGEwrp
-function makeAENTEXTCHANGEwrp(pStruct){
+function makeAENTEXTCHANGEwrp(pStruct, oStruct){
+    //PrintLog('makeAENTEXTCHANGEwrp')
     if(!oAENTEXTCHANGEwrp)
         oAENTEXTCHANGEwrp = makeStructWrapper(0, 
                                 "hdr", 0, 6, makeAENMHDRwrp,
@@ -153,7 +155,8 @@ function makeAENTEXTCHANGEwrp(pStruct){
                                 "bColumnSel", (_X64 ? 104 : 56), 3,
                                 "crRichSel", (_X64 ? 112 : 60), 6, makeCHARRANGE64wrp
                             )
-    var oStruct = shallowCopyObject(oAENTEXTCHANGEwrp) 
+    oStruct = shallowCopyObject(oAENTEXTCHANGEwrp, oStruct)
+    //PrintLog('typeof oStruct = ' + typeof oStruct) 
     if (pStruct) oStruct.pStruct = pStruct 
     oStruct.size = _X64 ? 128 : 68     
     return oStruct                                           
