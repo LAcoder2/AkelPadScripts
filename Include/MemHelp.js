@@ -11,7 +11,7 @@ function test_makeStructWrapper(){
     var sDat = "Сергей \x23 Электрик"
     PrintLog(sDat.length * 2)
         
-    st.pStruct = AkelPad.MemStrPtr(sDat)
+    st.pStructSet(AkelPad.MemStrPtr(sDat))
     PrintLog(st.name() + "\n" +
              st.age() + "\n" +
              st.speciality())
@@ -23,90 +23,146 @@ function test_makeStructWrapper(){
              st.specialityPtr())
 }
 
-function makeStructWrapper(pStruct){
+function makeStructWrapper(){
     var nstp = 0
-    try{
-    var oStruct = {pStruct: pStruct}
-    
-    for (var i = 3; i < arguments.length; i += 3){
-        var fieldName = arguments[i-2]
-        var nOffset = arguments[i-1]
-        var nType = arguments[i]
+    try {
+        var oStruct = {} //pStruct: pStruct}
+        var nCountSubStructs = 0
         
-        if (nType === 6){
-            var fnGetWrp = arguments[++i]
-            nstp = 1
-            //oStruct[fieldName] = fieldSubStruct1(nOffset, fnGetWrp)
-            oStruct[fieldName] = fieldSubStruct2(nOffset, fnGetWrp, oStruct, fieldName)
-            nstp = 2
-        } else {
-            var nLength
-            if (nType === 1 || nType === 0) 
-                nLength = arguments[++i]
-            else
-                nLength = -1
-            nstp = 3    
-            oStruct[fieldName] = fieldRead(nOffset, nType, nLength)             // прочитать значение поля
-            oStruct[fieldName + "Set"] = fieldWrite(nOffset, nType, nLength)    // записать значение
-            oStruct[fieldName + "Ptr"] = fieldPtr(nOffset)                      // получить указатель поля
-            nstp = 4
+        // Инициализация свойств, отвечающих за поля структуры
+        for (var i = 3; i < arguments.length; i += 3){
+            var fieldName = arguments[i-2]
+            var nOffset = arguments[i-1]
+            var nType = arguments[i]
+            
+            if (nType === 6){
+                var fnGetWrp = arguments[++i]
+                //nstp = 1
+                //oStruct[fieldName] = fieldSubStruct1(nOffset, fnGetWrp)
+                oStruct[fieldName] = fieldSubStruct2(nOffset, fnGetWrp, oStruct, fieldName)
+                ++nCountSubStructs
+                //nstp = 2
+            } else {
+                var nLength
+                if (nType === 1 || nType === 0) 
+                    nLength = arguments[++i]
+                else
+                    nLength = -1
+                nstp = 3    
+                oStruct[fieldName] = fieldRead(nOffset, nType, nLength)             // прочитать значение поля
+                oStruct[fieldName + "Set"] = fieldWrite(nOffset, nType, nLength)    // записать значение
+                oStruct[fieldName + "Ptr"] = fieldPtr(nOffset)                      // получить указатель поля
+                nstp = 4
+            }
         }
-    }
-    }catch(e){
+        // Инициализация дефолтных ручек объекта происходит при первом использовании pStruct() или pStructSet()
+        // c помощью процедуры initDefaultProps(), которая обеспечивает экземпляр объекта стандартными свойствами 
+        // и скрытием его данных, посредством замыкания
+        oStruct.pStruct = function(){
+            initDefaultProps(this) //, nCountSubStructs)
+            return this.pStruct()
+        }
+        oStruct.pStructSet = function(pNewStruct){
+            initDefaultProps(this) //, nCountSubStructs)
+            return this.pStructSet(pNewStruct)
+        }
+        
+    } catch(e) {
         PrintLog('Ошибка в makeStructWrapper()\n' + e.description + " " + nstp)
     }
+    
     return oStruct
     
-    function fieldSubStruct1(nOffset, fnGetWrp){ //v1
+    function initDefaultProps(oThis/*, nCountSubStructs*/){
+        var pStruct = 0
+        //PrintLog('nCountSubStructs = ' + nCountSubStructs)
+        var arSubStructs = Array(nCountSubStructs * 2)
+        //PrintLog(typeof arSubStructs)
+        var nCountInit = 0
+        //PrintLog('typeof oThis = ' + typeof oThis)
+        oThis.pStruct = function(){ 
+            return pStruct 
+        }
+        oThis.pStructSet = function(pNewStruct){
+            pStruct = pNewStruct                         //меняем указатель структуры
+            //PrintLog('pNewStruct = ' + pNewStruct)
+            //PrintLog('arSubStructs.length = ' + arSubStructs.length)
+            //PrintLog('nCountInit = ' + nCountInit)
+            var oSubStruct, nOffset
+            for(var i = 0; i < nCountInit; i += 2){
+                oSubStruct = arSubStructs[i]
+                //PrintLog(typeof oSubStruct)
+                if(oSubStruct){
+                    nOffset = arSubStructs[i + 1]
+                    oSubStruct.pStructSet(pStruct + nOffset) //меняем указатели в каждом проинициализированном объекте суб-структуры
+                }
+            }
+            return pStruct
+        }
+        oThis._AddSubStruct = function(oSubStruct, nOffset){ // запоминание данных субструктуры в родительском объекте
+            arSubStructs[nCountInit++] = oSubStruct
+            arSubStructs[nCountInit++] = nOffset
+        }
+    }
+    function fieldSubStruct1(nOffset, fnGetWrp){                            //v1
         var oSubStruct
-        return function (){
-            if (this.pStruct){
-                var pSubStruct = this.pStruct + nOffset
-                if (!oSubStruct) 
+        return function(){
+            var pStruct = this.pStruct()
+            if (pStruct){
+                var pSubStruct = pStruct + nOffset
+                if (!oSubStruct){ 
                     oSubStruct = fnGetWrp(pSubStruct)
-                else if(oSubStruct.pStruct !== pSubStruct) 
-                    oSubStruct.pStruct = pSubStruct
+                    this._AddSubStruct(oSubStruct, nOffset)
+                }else if(oSubStruct.pStruct() !== pSubStruct){ 
+                    oSubStruct.pStructSet(pSubStruct)
+                }
                 return oSubStruct
             }
         }
     }
-    function fieldSubStruct2(nOffset, fnGetWrp, oParentStruct, fieldName){ v2
+    function fieldSubStruct2(nOffset, fnGetWrp, oParentStruct, fieldName){  //v2
 //        try{
-        var oSubStruct = oParentStruct[fieldName] = function (){
-            if (this.pStruct){
-                var pSubStruct = this.pStruct + nOffset
+        var oSubStruct = oParentStruct[fieldName] = function(){
+            var pStruct = this.pStruct()
+            if (pStruct){
+                var pSubStruct = pStruct + nOffset
                 //PrintLog('12345 ' + typeof oSubStruct)
-                if (!oSubStruct.pStruct) 
-   /*oSubStruct = */fnGetWrp(pSubStruct, oSubStruct)  
-                else if(oSubStruct.pStruct !== pSubStruct) 
-                    oSubStruct.pStruct = pSubStruct
+                if (!oSubStruct.size){ //проверка инициализации поля-субструктуры 
+   /*oSubStruct = */fnGetWrp(pSubStruct, oSubStruct)
+                    this._AddSubStruct(oSubStruct, nOffset)  
+                }else if(oSubStruct.pStruct() !== pSubStruct) 
+                    oSubStruct.pStructSet(pSubStruct)
                 return oSubStruct
             }
         }
-            return oSubStruct
+        return oSubStruct
 //        } catch(e) {
 //            PrintLog('Ошибка в fieldSubStruct' + e.description) 
 //        }
     }
     function fieldRead(nOffset, nType, nLength){
-        return function (nType2, nLength2){
-            if (this.pStruct)
-                return AkelPad.MemRead(_PtrAdd(this.pStruct, nOffset), 
+        return function(nType2, nLength2){
+            var pStruct = this.pStruct()
+            if (pStruct)
+                return AkelPad.MemRead(_PtrAdd(pStruct, nOffset), 
                                         nType2 === undefined ? nType : nType2, 
                                         !nLength2 ? nLength : nLength2)
         }
     }
     function fieldWrite(nOffset, nType, nLength){
-        return function (vData, nType2, nLength2){
-            if (this.pStruct)
-                AkelPad.MemCopy(_PtrAdd(this.pStruct, nOffset), vData, 
+        return function(vData, nType2, nLength2){
+            var pStruct = this.pStruct()
+            if (pStruct)
+                AkelPad.MemCopy(_PtrAdd(pStruct, nOffset), vData, 
                                 nType2 === undefined ? nType : nType2, 
                                 !nLength2 ? nLength : nLength2)
         }
     }
     function fieldPtr(nOffset){
-        return function (){
-            return this.pStruct + nOffset
+        return function(){
+            var pStruct = this.pStruct()
+            if (pStruct)
+                return pStruct + nOffset
         }
     }
 }
@@ -122,13 +178,17 @@ function AllocStringA(paStr, nLength){
 // Создание строки, заполненной нулями заданного размера (nLen)
 // предназначено для безопасного выделения памяти
 var makeStrBuff = (function() {
-    var StrBuf = "";  // сохраняется между вызовами
-    return function(nLen) {
-        if (StrBuf.length < nLen) {
-            StrBuf = Array(nLen + 1).join("\0");
+    try{
+        var StrBuf = ""         // буфер сохраняется между вызовами
+        return function(nLen) {
+            if (StrBuf.length < nLen) {
+                StrBuf = Array(nLen + 1).join("\0")
+            }
+            return StrBuf.substr(0, nLen);
         }
-        return StrBuf.substr(0, nLen);
-    };
+    }catch(e){
+        PrintLog('Ошибка в makeStrBuff ' + e.description)
+    }
 })()
 //Поверхностное копирование объекта
 function shallowCopyObject(objInp, objOut){

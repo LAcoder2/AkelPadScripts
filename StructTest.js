@@ -13,18 +13,20 @@ AkelPad.Include("MemHelp.js")
 try{
     var nstp = -1
     var oTC = makeAENTEXTCHANGEwrp()
+    //PrintLog(oTC)
     nstp = 1
     var sBuf = makeStrBuff(oTC.size / 2)
     nstp = 2
-    oTC.pStruct = sBuf.StrPtr()
+    oTC.pStructSet(sBuf.StrPtr())
 //    oTC.crRichSel().cpMaxSet(55544)
 //    PrintLog(oTC.crRichSel().cpMax())
 //    PrintLog(oTC.crRichSel().cpMaxPtr() - oTC.pStruct)
 //    oTC.crSel().ciMax().nCharInLineSet(752)
 //    PrintLog(oTC.crSel().ciMax().nCharInLine())
     var s = "Какая-то строка"
-    PrintLog(typeof oTC.crSel().ciMax())
+    //PrintLog(typeof oTC.crSel().ciMax())
     //PrintLog(typeof oTC.crSel.ciMax)
+    PrintLog(typeof oTC.crSel().ciMax())
     with(oTC.crSel.ciMax){
         lpLineSet(s.StrPtr())
         PrintLog(AllocString(lpLine()))
@@ -60,7 +62,7 @@ function makeAELINEDATAwrp(pStruct, oStruct){
                                 "nSelEnd", (_X64 ? 40 : 28), 3
                             )
     oStruct = shallowCopyObject(oAELINEDATAwrp, oStruct) 
-    if (pStruct) oStruct.pStruct = pStruct 
+    if (pStruct) oStruct.pStructSet(pStruct) 
     oStruct.size = _X64 ? 48 : 32     
     return oStruct                                           
 } 
@@ -78,7 +80,7 @@ function makeAECHARINDEXwrp(pStruct, oStruct){
                                 "nCharInLine", (_X64 ? 16 : 8), 3
                             )
     oStruct = shallowCopyObject(oAECHARINDEXwrp, oStruct) 
-    if (pStruct) oStruct.pStruct = pStruct 
+    if (pStruct) oStruct.pStructSet(pStruct) 
     oStruct.size = _X64 ? 24 : 12     
     return oStruct                                           
 } 
@@ -94,7 +96,7 @@ function makeAECHARRANGEwrp(pStruct, oStruct){
                                 "ciMax", (_X64 ? 24 : 12), 6, makeAECHARINDEXwrp
                             )
     oStruct = shallowCopyObject(oAECHARRANGEwrp, oStruct) 
-    if (pStruct) oStruct.pStruct = pStruct 
+    if (pStruct) oStruct.pStructSet(pStruct)
     oStruct.size = _X64 ? 48 : 24     
     return oStruct                                           
 } 
@@ -114,7 +116,7 @@ function makeAENMHDRwrp(pStruct, oStruct){
                                 "docFrom", (_X64 ? 20 : 12), 2
                             )
     oStruct = shallowCopyObject(oAENMHDRwrp, oStruct) 
-    if (pStruct) oStruct.pStruct = pStruct 
+    if (pStruct) oStruct.pStructSet(pStruct) 
     oStruct.size = _X64 ? 28 : 16     
     return oStruct                                           
 } 
@@ -130,7 +132,7 @@ function makeCHARRANGE64wrp(pStruct, oStruct){
                                 "cpMax", (_X64 ? 8 : 4), 2
                             )
     oStruct = shallowCopyObject(oCHARRANGE64wrp, oStruct) 
-    if (pStruct) oStruct.pStruct = pStruct 
+    if (pStruct) oStruct.pStructSet(pStruct)
     oStruct.size = _X64 ? 16 : 8     
     return oStruct                                           
 } 
@@ -156,8 +158,8 @@ function makeAENTEXTCHANGEwrp(pStruct, oStruct){
                                 "crRichSel", (_X64 ? 112 : 60), 6, makeCHARRANGE64wrp
                             )
     oStruct = shallowCopyObject(oAENTEXTCHANGEwrp, oStruct)
-    //PrintLog('typeof oStruct = ' + typeof oStruct) 
-    if (pStruct) oStruct.pStruct = pStruct 
+    if (pStruct) 
+        oStruct.pStructSet(pStruct)
     oStruct.size = _X64 ? 128 : 68     
     return oStruct                                           
 } 
