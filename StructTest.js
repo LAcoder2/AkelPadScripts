@@ -76,7 +76,6 @@ function makeAELINEDATAwrp(pStruct, oStruct, fullInit){
   int nCharInLine;          // 16/8     Позиция символа в строке.
 } AECHARINDEX;              // 24/12    Общий размер.*/
 function makeAECHARINDEXwrp(pStruct, oStruct, fullInit){
-    //PrintLog('makeAECHARINDEXwrp pStruct = ' + pStruct)
     return oStruct = makeStructWrapper(pStruct, oStruct, (_X64 ? 24 : 12), fullInit, 
                                         "nLine", 0, 3,
                                         "lpLine", (_X64 ? 8 : 4), 9, makeAELINEDATAwrp,
@@ -88,7 +87,6 @@ function makeAECHARINDEXwrp(pStruct, oStruct, fullInit){
   AECHARINDEX ciMax;        // 24/12    Индекс последнего символа в диапазоне.
 } AECHARRANGE;              // 48/24    Общий размер.*/
 function makeAECHARRANGEwrp(pStruct, oStruct, fullInit){
-    //PrintLog('makeAECHARRANGEwrp pStruct = ' + pStruct)
     return oStruct = makeStructWrapper(pStruct, oStruct, (_X64 ? 48 : 24), fullInit, 
                                         "ciMin", 0, 6, makeAECHARINDEXwrp,
                                         "ciMax", (_X64 ? 24 : 12), 6, makeAECHARINDEXwrp
@@ -101,7 +99,6 @@ function makeAECHARRANGEwrp(pStruct, oStruct, fullInit){
   AEHDOC docFrom;           // 20/12    Дескриптор документа. См. сообщение AEM_CREATEDOCUMENT.
 } AENMHDR;                  // 28/16    Общий размер.*/
 function makeAENMHDRwrp(pStruct, oStruct){
-    //PrintLog('makeAENMHDRwrp pStruct = ' + pStruct)
     return oStruct = makeStructWrapper(pStruct, oStruct, (_X64 ? 28 : 16), undefined, 
                                         "hwndFrom", 0, 2,
                                         "idFrom", (_X64 ? 8 : 4), 2,
