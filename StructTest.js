@@ -3,42 +3,22 @@ AkelPad.Include("MemHelp.js")
 
 try{
     var nstp = -1
-    var sTCBuf = makeStrBuff(/*oTC.size()*/128 / 2)  // выделяем память для основной структуры AENTEXTCHANGE
-    var sLDTBuf = makeStrBuff(/*oLDt.size()*/48 / 2) // выделяем память для референсной структуры AELINEDATA
+    var sTCBuf = Space(/*oTC.size()*/128 / 2)       // выделяем память для основной структуры AENTEXTCHANGE
+    var sLDTBuf = Space(/*oLDt.size()*/48 / 2)      // выделяем память для ссылочной структуры AELINEDATA, 
+                                                    // заполненную символом пробела, чтобы имитировать заполненность
     var oTC = makeAENTEXTCHANGEwrp(StrPtr(sTCBuf), 0, 2)
-    //var oLDt = makeAELINEDATAwrp(StrPtr(sLDTBuf))
-    //PrintLog(typeof oTC)
     nstp = 1
-    //PrintLog(sLDTBuf.length)
-    //oTC.pStructSet(sTCBuf.StrPtr())
-    //oTC.crSel.ciMax.lpLineSet(sLDTBuf.StrPtr())
-    /*PrintLog(sBuf.StrPtr())
-    PrintLog(oTC.pStruct())*/
-//    oTC.crRichSel().cpMaxSet(55544)
-//    PrintLog(oTC.crRichSel().cpMax())
-    //PrintLog(oTC.crRichSel.cpMaxPtr() - oTC.pStruct()); WScript.Quit()
-    //PrintLog(oTC.crRichSel().cpMaxPtr() - oTC.pStruct())//; WScript.Quit()
-//    oTC.crSel().ciMax().nCharInLineSet(752)
-//    PrintLog(oTC.crSel().ciMax().nCharInLine())
-    var s = "Какая-то строка"
-    //PrintLog(typeof oTC.crSel().ciMax())
-    //PrintLog(typeof oTC.crSel.ciMax)
+    
+    PrintLog(oTC.crRichSel().cpMaxPtr() - oTC.pStruct())        // получаем смещение последнего элемента структуры
+    oTC.crSel().ciMax().nCharInLineSet(752)                     // пишем простое значение в поле структуры
+    PrintLog(oTC.crSel.ciMax.nCharInLine())                     // читаем это значение
+    
+    var s = "Привет Ворлд!"
     oTC.crSel.ciMax.lpLineSet(StrPtr(sLDTBuf))
-    //PrintLog(1)
-    //PrintLog('ciMax.pStruct() = ' + oTC.crSel.ciMax.pStruct())
-    //PrintLog('StrPtr(s) = ' + StrPtr(s))
-    //PrintLog(oTC.crSel.ciMax)
-    oTC.crSel.ciMax.lpLineRef().wpLineSet(StrPtr(s))            // запись значения в референсную структуру
-    //oTC = undefined
-    var oTC2 = makeAENTEXTCHANGEwrp(StrPtr(sTCBuf), 0, 2)       // инициализируем новый объект над измененным буфером с флагом fullInit = 2
+    oTC.crSel.ciMax.lpLineRef().wpLineSet(StrPtr(s))            // пишем значение (указатель) в ссылочную структуру
                                                                 // имитируя доступ к заполненной структуре
-    //PrintLog(AllocString(oTC.crSel.ciMax.lpLineRef.wpLine()))   // считываем строку wchar_t из "заполненной" референсной структуры
-    PrintLog(oTC.crSel.ciMax.lpLineRef.wpLineRef())
-    //PrintLog(oTC.crSel().ciMax.lpLineSet); WScript.Quit()
-    /*with(oTC.crSel.ciMax){
-        lpLineSet(s.StrPtr())
-        PrintLog(AllocString(lpLine()))
-    }*/
+    PrintLog(oTC.crSel.ciMax.lpLineRef.wpLineRef())             // считываем ссылочное значение (строку wchar_t) из ссылочной структуры
+    
 }catch(e){
     PrintLog(e.message + " " + nstp)
     //PrintLog(nstp)
@@ -56,7 +36,6 @@ try{
   int nSelEnd;              // 40/28    Конечная позиция символа выделения в строке.
 } AELINEDATA;               // 48/32    Общий размер.*/
 function makeAELINEDATAwrp(pStruct, oStruct, fullInit){
-    //PrintLog('makeAELINEDATAwrp fullInit = ' + fullInit)
     return oStruct = makeStructWrapper(pStruct, oStruct, (_X64 ? 48 : 32), fullInit, 
                                         "next", 0, 9, makeAELINEDATAwrp,
                                         "prev", (_X64 ? 8 : 4), 9, makeAELINEDATAwrp,

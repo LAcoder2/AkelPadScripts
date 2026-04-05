@@ -1,7 +1,6 @@
-﻿// Модуль AkelPad-WSH-JScript
+﻿// Модуль MemHelp.js (AkelPad-WSH-JScript) для секции "Include"
 // (c) testuser2 2026
 // Версия: 1 - 04/2026
-// MemHelp.js
 // Описание: различные функции и объекты, урощающими работу с памятью и структурами в JScript
 
 // Функция создания объекта-враппера структуры, упрощающего работу со структурами данных
@@ -15,12 +14,11 @@
 function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
         if (!oStruct) oStruct = {}
         if (!fullInit) fullInit = 0
-        //PrintLog('pStruct = ' + pStruct + ' nSize = ' + nSize)
         var nCountSubStructs = 0
         var nCountInit = 0
-        var arSubStructs = [] // массив для хранения данных (и контроля) полей проинициализированных дочерних структур
-        var dictRefs = {}
         var nMaxCount = 0
+        var arSubStructs = [] // массив для хранения данных (и контроля) полей проинициализированных дочерних структур
+        //var dictRefs = {}
         var fnGetWrp
         
         //--Инициализация свойств, отвечающих за поля структуры--//
@@ -46,14 +44,7 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
                 var fldNmRef = fieldName + "Ref"
                 //oStruct[fldNmRef] = fieldRefStruct(nOffset, fnGetWrp, fldNmRef)      // v1 объекты референсных структур всегда инициализируются отложенно 
                 var fnRefStructInit = fieldRefStruct(nOffset, fnGetWrp, fldNmRef)    // v2 реф-структуры также инициализируются, до уровня вложенности, соответствующего параметру fullInit
-                //PrintLog('typeof fnRefStructInit = ' + typeof fnRefStructInit)
-                //PrintLog(fieldName)
-                //PrintLog('fullInit = ' + fullInit + ' fieldName = ' + fieldName + " nsize = " + nSize)
-                //PrintLog('fullInit = ' + fullInit)
                 oStruct[fldNmRef] = (fullInit < 2 || !pStruct) ? fnRefStructInit : fnRefStructInit()
-                //PrintLog(fldNmRef)
-                //PrintLog("!!!!" + typeof(oStruct[fldNmRef]))
-                //PrintLog('typeof oStruct[fldNmRef] = ' + typeof oStruct[fldNmRef])
             } else {
                 var nLength = (nType === 1 || nType === 0) ? arguments[++i] : -1    // Строки Unicode и Ansi, включенные в структуру
                 
@@ -72,7 +63,7 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
         //--Инициализация дефолтных свойств--//
         oStruct.pStruct = function(){return pStruct}
         oStruct.pStructSet = function(pNewStruct){
-            //здесь можно добавить проверку на числовое значение pNewStruct (защита от идиотизма)
+            //if (isInteger(pNewStruct) && pNewStruct > 0){} else errorNoPointer()
             pStruct = pNewStruct                        //меняем указатель основной структуры
             var fn_pSubStructSet, nOffset
             if (pStruct){
@@ -94,38 +85,32 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
     return oStruct
     
     //--Функции для инициализации полей - структур--//
-    function fieldSubStruct(nOffset, fnGetWrp, fieldName){  // инициализация объекта вложенной структуры
-//        try{
-        return function (){ // "ленивая" инициализации объекта субструктуры
+    function fieldSubStruct(nOffset, fnGetWrp, fieldName){      // "ленивая" инициализация объекта вложенной структуры
+        return function (){                                     
             if(pStruct || fullInit){ 
                 var oSubStruct = oStruct[fieldName] = function (){
                     if (pStruct) return oSubStruct
                     errorNullPointer()
                 }
                 fnGetWrp((pStruct ? pStruct + nOffset : 0), oSubStruct, fullInit)
-                arSubStructs[nCountInit++] = oSubStruct.pStructSet //забираем у объекта вложенной структуры ручку pStructSet()
+                arSubStructs[nCountInit++] = oSubStruct.pStructSet // забираем у объекта вложенной структуры ручку pStructSet()
                 arSubStructs[nCountInit++] = nOffset
-                oSubStruct.pStructSet = function (){
+                oSubStruct.pStructSet = function (){               // бьем по рукам, чтобы не пытались..
                     throw new Error("Нельзя изменить указатель дочерней структуры!")
                 }
                 return oSubStruct
             }
             //errorNullPointer()
         }
-//        } catch(e) {
-//            PrintLog('Ошибка в fieldSubStruct' + e.description) 
-//        }
     } 
-    function fieldRefStruct(nOffset, fnGetWrp, fieldName){    // инициализация ссылочной структуры
-        return function fnRefStructInit(){ // ленивая инициализация
+    function fieldRefStruct(nOffset, fnGetWrp, fieldName){      // "ленивая" инициализация ссылочной структуры
+        return function fnRefStructInit(){                      
             //PrintLog('Попытка инициализации ' + pStruct)
             if (pStruct){
                 var fn_pStructSet
-                //WScript.Echo(pStruct + " " + nOffset + " " + fullInit); WScript.Quit()
                 var pSubStruct = AkelPad.MemRead(pStruct + nOffset, 2)
-                //WScript.Echo('pSubStruct = ' + pSubStruct)
                 if (pSubStruct){
-                    //PrintLog('Инициализация референса')
+                    //PrintLog('Инициализация ссылочной структуры')
                     var oRefStruct = oStruct[fieldName] = function (){
                         if (pStruct){
                         if (pSubStruct = AkelPad.MemRead(pStruct + nOffset, 2)) {
@@ -137,7 +122,7 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
                         errorNullPointer()
                     }
                     fnGetWrp(pSubStruct, oRefStruct, fullInit - 1)
-                    fn_pStructSet = oRefStruct.pStructSet //забираем у объекта референсной структуры ручку pStructSet() 
+                    fn_pStructSet = oRefStruct.pStructSet       // забираем у ссылочной структуры метод pStructSet() 
                     oRefStruct.pStructSet = function (){
                         throw new Error("Нельзя изменить указатель референсной структуры!")
                     }
@@ -177,18 +162,21 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
                     return AkelPad.MemRead(pValue, 
                                            (!isInteger(nType2)   || nType2   < 0) ? nType   : nType2, 
                                            (!isInteger(nLength2) || nLength2 < 0) ? nLength : nLength2)
-                } // при pValue = 0 вернет undefined
+                }                                   // при pValue = 0 вернет undefined
             errorNullPointer()
         }
     }
-    function fieldPtr(nOffset){                     //получение указателя поля структуры
+    function fieldPtr(nOffset){                     // получение указателя поля структуры
         return function(){
             if (pStruct) return pStruct + nOffset
             errorNullPointer()
         }
     }
-    function errorNullPointer(){                    // ошибка вызываемая при pStruct = 0
+    function errorNullPointer(){                    // ошибка при pStruct = 0
         throw new Error("Указатель основной структуры равен нулю!")
+    }
+    function errorNoPointer(){                      
+        throw new Error("Значение не соответствует типу указателя!")
     }
 }
 
@@ -205,10 +193,21 @@ function AllocStringA(paStr, nLength){
 // Создание строки, заполненной нулями заданного размера (nLen)
 // предназначено для безопасного выделения памяти
 var makeStrBuff = (function() {
-    var StrBuf = ""         // буфер сохраняется между вызовами
+    var StrBuf = ""         
     return function(nLen) {
         if (StrBuf.length < nLen) {
             StrBuf = Array(nLen + 1).join("\0")
+        }
+        return StrBuf.substr(0, nLen);
+    }
+})()
+// Создание строки, заполненной пробелами
+// Аналог Space() в VB
+var Space = (function() {
+    var StrBuf = ""         
+    return function(nLen) {
+        if (StrBuf.length < nLen) {
+            StrBuf = Array(nLen + 1).join(" ")
         }
         return StrBuf.substr(0, nLen);
     }
@@ -231,14 +230,20 @@ Array.prototype.realloc = function(newlen) {
         this.splice(newlen, this.length - newlen)   // Укорачиваем: удаляем лишние элементы
     else if (newlen > this.length)                  // Удлиняем: добавляем undefined элементы
         this[newlen - 1] = undefined                // автоматически расширит массив
-    //return this
+    return this
 }
 Array.prototype.padEnd = function(lenadd, value){   // добавить lenadd элементов в конец
     if(lenadd > 0)
         this[this.length + lenadd - 1] = value
+    return this
 }
 Array.prototype.rightDelete = function(lendel){
    this.splice(-lendel, lendel)
+   return this
+}
+Array.prototype.leftDelete = function(lendel){
+   this.splice(0, lendel)
+   return this
 }
 // проверка любого значения (строка, объект, булево и т.д.) на соответствие целому числу
 function isInteger(vData){
