@@ -1,28 +1,34 @@
-﻿AkelPad.Include("log.js")
+﻿// Модуль StructTest.js (AkelPad-WSH-JScript)
+// (c) testuser2 2026
+// Описание: пример работы со C-структурами в AkelPad-JScript, используя объектные оболочки структур 
+// https://github.com/LAcoder2/AkelPadScripts/blob/main/StructTest.js
+
+AkelPad.Include("log.js")
 AkelPad.Include("MemHelp.js")
 
 try{
     var nstp = -1
-    var sTCBuf = Space(/*oTC.size()*/128 / 2)       // выделяем память для основной структуры AENTEXTCHANGE
-    var sLDTBuf = Space(/*oLDt.size()*/48 / 2)      // выделяем память для ссылочной структуры AELINEDATA, 
-                                                    // заполненную символом пробела, чтобы имитировать заполненность
+    var sTCBuf = Space(/*oTC.size()*/128 / 2)               // выделяем память для основной структуры AENTEXTCHANGE
+    var sLDTBuf = Space(/*oLDt.size()*/48 / 2)              // выделяем память для ссылочной структуры AELINEDATA, 
+                                                            // заполненную символом пробела, чтобы имитировать заполненность
     var oTC = makeAENTEXTCHANGEwrp(StrPtr(sTCBuf), 0, 2)
     nstp = 1
     
-    PrintLog(oTC.crRichSel().cpMaxPtr() - oTC.pStruct())        // получаем смещение последнего элемента структуры
-    oTC.crSel().ciMax().nCharInLineSet(752)                     // пишем простое значение в поле структуры
-    PrintLog(oTC.crSel.ciMax.nCharInLine())                     // читаем это значение
+    PrintLog(oTC.crRichSel().cpMaxPtr() - oTC.pStruct())    // получаем смещение последнего элемента структуры
+    oTC.crSel().ciMax().nCharInLineSet(752)                 // пишем простое значение в поле структуры
+    PrintLog(oTC.crSel.ciMax.nCharInLine())                 // читаем это значение
     
     var s = "Привет Ворлд!"
     oTC.crSel.ciMax.lpLineSet(StrPtr(sLDTBuf))
-    oTC.crSel.ciMax.lpLineRef().wpLineSet(StrPtr(s))            // пишем значение (указатель) в ссылочную структуру
-                                                                // имитируя доступ к заполненной структуре
-    PrintLog(oTC.crSel.ciMax.lpLineRef.wpLineRef())             // считываем ссылочное значение (строку wchar_t) из ссылочной структуры
+    oTC.crSel.ciMax.lpLineRef().wpLineSet(StrPtr(s))        // пишем значение (указатель) в ссылочную структуру
+                                                            // имитируя доступ к заполненной структуре
+    PrintLog(oTC.crSel.ciMax.lpLineRef.wpLineRef())         // считываем ссылочное значение (строку wchar_t) из ссылочной структуры
     
 }catch(e){
     PrintLog(e.message + " " + nstp)
-    //PrintLog(nstp)
 }
+
+// Функции инициализации врапперов структур
 /*typedef struct {            // смещения (x64/x86)
   struct _AELINEDATA *next; // 0/0      Указатель на следующую структуру AELINEDATA.
   struct _AELINEDATA *prev; // 8/4      Указатель на предыдущую структуру AELINEDATA.
@@ -75,14 +81,14 @@ function makeAECHARRANGEwrp(pStruct, oStruct, fullInit){
   HWND hwndFrom;            // 0/0      Дескриптор окна‑источника.
   UINT_PTR idFrom;          // 8/4      Идентификатор источника.
   UINT code;                // 16/8     Код уведомления.
-  AEHDOC docFrom;           // 20/12    Дескриптор документа. См. сообщение AEM_CREATEDOCUMENT.
-} AENMHDR;                  // 28/16    Общий размер.*/
+  AEHDOC docFrom;           // 24/12    Дескриптор документа. См. сообщение AEM_CREATEDOCUMENT.
+} AENMHDR;                  // 32/16    Общий размер.*/
 function makeAENMHDRwrp(pStruct, oStruct){
-    return oStruct = makeStructWrapper(pStruct, oStruct, (_X64 ? 28 : 16), undefined, 
+    return oStruct = makeStructWrapper(pStruct, oStruct, (_X64 ? 32 : 16), undefined, 
                                         "hwndFrom", 0, 2,
                                         "idFrom", (_X64 ? 8 : 4), 2,
                                         "code", (_X64 ? 16 : 8), 3,
-                                        "docFrom", (_X64 ? 20 : 12), 2
+                                        "docFrom", (_X64 ? 24 : 12), 2
                                     )
 } 
 /*typedef struct {            // смещения (x64/x86)
@@ -97,20 +103,20 @@ function makeCHARRANGE64wrp(pStruct, oStruct){
 } 
 /*typedef struct {            // смещения (x64/x86)
   AENMHDR hdr;              // 0/0      Стандартный NMHDR.
-  AECHARRANGE crSel;        // 28/16    Текущее выделение.
-  AECHARINDEX ciCaret;      // 76/40    Позиция индекса символа курсора.
-  DWORD dwType;             // 100/52   См. определения AETCT_*.
-  BOOL bColumnSel;          // 104/56   Колоночное выделение.
+  AECHARRANGE crSel;        // 32/16    Текущее выделение.
+  AECHARINDEX ciCaret;      // 80/40    Позиция индекса символа курсора.
+  DWORD dwType;             // 104/52   См. определения AETCT_*.
+  BOOL bColumnSel;          // 108/56   Колоночное выделение.
   CHARRANGE64 crRichSel;    // 112/60   Текущее выделение (смещение RichEdit).
 } AENTEXTCHANGE;            // 128/68   Общий размер.
 */
 function makeAENTEXTCHANGEwrp(pStruct, oStruct, fullInit){
     return oStruct = makeStructWrapper(pStruct, oStruct, (_X64 ? 128 : 68)/*size*/, fullInit,
                                         "hdr", 0, 6, makeAENMHDRwrp,
-                                        "crSel", (_X64 ? 28 : 16), 6, makeAECHARRANGEwrp,
-                                        "ciCaret", (_X64 ? 76 : 40), 6, makeAECHARRANGEwrp,
-                                        "dwType", (_X64 ? 100 : 52), 3, 
-                                        "bColumnSel", (_X64 ? 104 : 56), 3,
+                                        "crSel", (_X64 ? 32 : 16), 6, makeAECHARRANGEwrp,
+                                        "ciCaret", (_X64 ? 80 : 40), 6, makeAECHARRANGEwrp,
+                                        "dwType", (_X64 ? 104 : 52), 3, 
+                                        "bColumnSel", (_X64 ? 108 : 56), 3,
                                         "crRichSel", (_X64 ? 112 : 60), 6, makeCHARRANGE64wrp
                                     )
 } 

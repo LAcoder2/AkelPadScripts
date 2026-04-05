@@ -2,15 +2,16 @@
 // (c) testuser2 2026
 // Версия: 1 - 04/2026
 // Описание: различные функции и объекты, урощающими работу с памятью и структурами в JScript
+// https://github.com/LAcoder2/AkelPadScripts/blob/main/Include/MemHelp.js
 
 // Функция создания объекта-враппера структуры, упрощающего работу со структурами данных
 // pStruct  - указатель структуры
 // oStruct  - объект-враппер структуры, если нужно использовать уже существующий объект/функцию
 // nSize    - размер структуры
 // fullInit - флаг инициализации всех свойств объекта, соответствующих полям основной структуры, являющимися (суб-)структурами
-// если fullInit === 1, то все свойства, соответствующие дочерним структурам, и их свойства, соотв. их дочерним структурам любой вложенности будут инициализированы
-// если fullInit > 1,   то дополнительно будут инициализированы все референсные структуры первого уровня вложенности равного fullInit
-// если !fullInit,      то ни чего не будет инициализировано заранее, а только при первом обращении.
+// если fullInit === 1, - все свойства, соответствующие дочерним структурам, и их свойства, соотв. их дочерним структурам любой вложенности будут инициализированы
+// если fullInit > 1,   - дополнительно будут инициализированы все референсные структуры первого уровня вложенности равного fullInit
+// если !fullInit,      - ни чего не будет инициализировано заранее, а только при первом обращении.
 function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
         if (!oStruct) oStruct = {}
         if (!fullInit) fullInit = 0
@@ -45,6 +46,7 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
                 //oStruct[fldNmRef] = fieldRefStruct(nOffset, fnGetWrp, fldNmRef)      // v1 объекты референсных структур всегда инициализируются отложенно 
                 var fnRefStructInit = fieldRefStruct(nOffset, fnGetWrp, fldNmRef)    // v2 реф-структуры также инициализируются, до уровня вложенности, соответствующего параметру fullInit
                 oStruct[fldNmRef] = (fullInit < 2 || !pStruct) ? fnRefStructInit : fnRefStructInit()
+            
             } else {
                 var nLength = (nType === 1 || nType === 0) ? arguments[++i] : -1    // Строки Unicode и Ansi, включенные в структуру
                 
@@ -54,7 +56,6 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
                 }
                 oStruct[fieldName] = fieldRead(nOffset, nType, nLength)             // прочитать значение поля
                 oStruct[fieldName + "Set"] = fieldWrite(nOffset, nType, nLength)    // записать значение
-                
             }
             oStruct[fieldName + "Ptr"] = fieldPtr(nOffset)                          // получить указатель поля
         }
@@ -64,20 +65,22 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
         oStruct.pStruct = function(){return pStruct}
         oStruct.pStructSet = function(pNewStruct){
             //if (isInteger(pNewStruct) && pNewStruct > 0){} else errorNoPointer()
-            pStruct = pNewStruct                        //меняем указатель основной структуры
-            var fn_pSubStructSet, nOffset
-            if (pStruct){
-                for(var i = 0; i < nCountInit;){        //меняем указатели в каждом проинициализированном объекте дочерней структуры
-                    fn_pSubStructSet = arSubStructs[i++]
-                    nOffset = arSubStructs[i++]
-                    fn_pSubStructSet(pStruct + nOffset) 
-                }
-            } else {
-                for(var i = 0; i < nCountInit; i += 2){
-                    fn_pSubStructSet = arSubStructs[i]
-                    fn_pSubStructSet(0)                 //обнуляем указатели в объектах дочерних структур
-                }
-            }            
+            if (pStruct !== pNewStruct) {
+                pStruct = pNewStruct                        //меняем указатель основной структуры
+                var fn_pSubStructSet
+                if (pStruct){
+                    for(var i = 0; i < nCountInit;){        //меняем указатели в каждом проинициализированном объекте дочерней структуры
+                        fn_pSubStructSet = arSubStructs[i++]
+                        var nOffset = arSubStructs[i++]
+                        fn_pSubStructSet(pStruct + nOffset) 
+                    }
+                } else {
+                    for(var i = 0; i < nCountInit; i += 2){
+                        fn_pSubStructSet = arSubStructs[i]
+                        fn_pSubStructSet(0)                 //обнуляем указатели в объектах дочерних структур
+                    }
+                } 
+            }           
             return pStruct
         }
         oStruct.size = function(){return nSize}
@@ -128,8 +131,7 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
                     }
                     return oRefStruct
                 }
-                return fnRefStructInit
-            }//; errorNullPointer()
+            } return fnRefStructInit // При неудачной попытке инициализации, функция возвращает саму себя
         }
     }
     
@@ -137,7 +139,7 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
     function fieldRead(nOffset, nType, nLength){    // чтение из поля структуры базового типа
         return function(nType2, nLength2){
             if (pStruct)
-                return AkelPad.MemRead(_PtrAdd(pStruct, nOffset), 
+                return AkelPad.MemRead(pStruct + nOffset, 
                                         nType2 === undefined ? nType : nType2, 
                                         !nLength2 ? nLength : nLength2)
             errorNullPointer()
@@ -146,7 +148,7 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
     function fieldWrite(nOffset, nType, nLength){   // запись в поле структуры базовых типов
         return function(vData, nType2, nLength2){
             if (pStruct){
-                AkelPad.MemCopy(_PtrAdd(pStruct, nOffset), vData, 
+                AkelPad.MemCopy(pStruct + nOffset, vData, 
                                 nType2 === undefined ? nType : nType2, 
                                 !nLength2 ? nLength : nLength2)
                 return vData
