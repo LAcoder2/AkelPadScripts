@@ -186,7 +186,7 @@ function OnTextInsertBegin(lParam){
     try{
     PrintLog("Перед вставкой")
     oTI.pStructSet(lParam)
-    PrintLog('Текст для вставки. \n    ' + oTI.wpTextRef())
+    PrintLog('Текст для вставки. \n    ' + '|' + oTI.wpTextRef() + '|')
     PrintLog('Позиция вставки текста или диапазон после вставки. \n    ' + oTI.crAkelRange().ciMin().nCharInLine())
     } catch(e){
         PrintLog(e.message)
@@ -194,7 +194,8 @@ function OnTextInsertBegin(lParam){
 }
 function OnTextInsertEnd(lParam){              //111fszzfsz g
     PrintLog("После вставки")    
-    var nCurSelStart = AkelPad.GetSelStart() 
+    var nCurSelStart = AkelPad.GetSelStart()
+    return 
     PrintLog(nPrevSelStart + " " + nCurSelStart)
     try{
       if (InsertFlag){
