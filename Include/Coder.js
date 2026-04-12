@@ -12,7 +12,7 @@ function GetSyntaxComments() {
     if (!sSyntaxFile) return // Нет активной синтаксической темы
 
     // Получаем путь синтакс. файла
-    var sCoderDir = AkelPad.GetAkelDir(4) + "\\Coder";
+    var sCoderDir = AkelPad.GetAkelDir(4/*ADTYPE_PLUGS*/) + "\\Coder";
     var sFilePath = sCoderDir + "\\" + sSyntaxFile;
     
     // Читаем файл (флаг 0 - автоопределение кодировки)

@@ -12,7 +12,9 @@
 // если fullInit === 1, - все свойства, соответствующие дочерним структурам, и их свойства, соотв. их дочерним структурам любой вложенности будут инициализированы
 // если fullInit > 1,   - дополнительно будут инициализированы все референсные структуры первого уровня вложенности равного fullInit
 // если !fullInit,      - ни чего не будет инициализировано заранее, а только при первом обращении.
-function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
+AkelPad.Include("log.js")
+
+function makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields){
         if (!oStruct) oStruct = {}
         if (!fullInit) fullInit = 0
         var nCountSubStructs = 0
@@ -20,13 +22,13 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
         var nMaxCount = 0
         var arSubStructs = [] // массив для хранения данных (и контроля) полей проинициализированных дочерних структур
         //var dictRefs = {}
-        var fnGetWrp
+        var nSize = aOffsets[0]
         
         //--Инициализация свойств, отвечающих за поля структуры--//
-        for (var i = 6; i < arguments.length; i += 3){
-            var fieldName = arguments[i-2]
-            var nOffset = arguments[i-1]
-            var nType = arguments[i]
+        var fnWrpMaker, nOffset = 0, offIter = 0        
+        for (var i = 0; i < aDataFields.length - 2;){
+            var fieldName = aDataFields[i++]
+            var nType = aDataFields[i++]
             
             if (nType === 6){                   // структура, вложенная в основную структуру
                 nCountSubStructs += 2
@@ -34,21 +36,21 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
                     nMaxCount += 10
                     arSubStructs.realloc(nMaxCount)
                 }
-                fnGetWrp = arguments[++i]
-                var fnSubStructInit = fieldSubStruct(nOffset, fnGetWrp, fieldName)
+                fnWrpMaker = aDataFields[i++]
+                var fnSubStructInit = fieldSubStruct(nOffset, fnWrpMaker, fieldName)
                 oStruct[fieldName] = !fullInit ? fnSubStructInit : fnSubStructInit()
                 
             } else if (nType === 9){            // указатель на структуру
                 oStruct[fieldName] = fieldRead(nOffset, 2, nLength)             
                 oStruct[fieldName + "Set"] = fieldWrite(nOffset, 2, nLength)    
-                fnGetWrp = arguments[++i]
+                fnWrpMaker = aDataFields[i++]
                 var fldNmRef = fieldName + "Ref"
-                //oStruct[fldNmRef] = fieldRefStruct(nOffset, fnGetWrp, fldNmRef)      // v1 объекты референсных структур всегда инициализируются отложенно 
-                var fnRefStructInit = fieldRefStruct(nOffset, fnGetWrp, fldNmRef)    // v2 реф-структуры также инициализируются, до уровня вложенности, соответствующего параметру fullInit
-                oStruct[fldNmRef] = (fullInit < 2 || !pStruct) ? fnRefStructInit : fnRefStructInit()
+                //oStruct[fldNmRef] = fieldRefStruct(nOffset, fnWrpMaker, fldNmRef)      // v1 объекты референсных структур всегда инициализируются отложенно 
+                var fnRefStructInit = fieldRefStruct(nOffset, fnWrpMaker, fldNmRef)    // v2 реф-структуры также инициализируются, до уровня вложенности, соответствующего параметру fullInit
+                oStruct[fldNmRef] = ((fullInit < 2) || !pStruct) ? fnRefStructInit : fnRefStructInit()
             
             } else {
-                var nLength = (nType === 1 || nType === 0) ? arguments[++i] : -1    // Строки Unicode и Ansi, включенные в структуру
+                var nLength = (nType === 1 || nType === 0) ? aDataFields[i++] : -1    // Строки Unicode и Ansi, включенные в структуру
                 
                 if (nType === 7 || nType === 8){                                    // указатель строки char*/wchar_t
                     oStruct[fieldName + "Ref"] = fieldReadRef(nOffset, nType - 7, nLength) // прочитать значение по ссылке (DT_ANSI 1/DT_UNICODE)
@@ -58,6 +60,7 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
                 oStruct[fieldName + "Set"] = fieldWrite(nOffset, nType, nLength)    // записать значение
             }
             oStruct[fieldName + "Ptr"] = fieldPtr(nOffset)                          // получить указатель поля
+            nOffset = aOffsets[++offIter]
         }
         if (nCountSubStructs) arSubStructs.realloc(nCountSubStructs) 
         
@@ -88,14 +91,14 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
     return oStruct
     
     //--Функции для инициализации полей - структур--//
-    function fieldSubStruct(nOffset, fnGetWrp, fieldName){      // "ленивая" инициализация объекта вложенной структуры
+    function fieldSubStruct(nOffset, fnWrpMaker, fieldName){      // "ленивая" инициализация объекта вложенной структуры
         return function (){                                     
             if(pStruct || fullInit){ 
                 var oSubStruct = oStruct[fieldName] = function (){
                     if (pStruct) return oSubStruct
                     errorNullPointer()
                 }
-                fnGetWrp((pStruct ? pStruct + nOffset : 0), oSubStruct, fullInit)
+                fnWrpMaker((pStruct ? pStruct + nOffset : 0), oSubStruct, fullInit)
                 arSubStructs[nCountInit++] = oSubStruct.pStructSet // забираем у объекта вложенной структуры ручку pStructSet()
                 arSubStructs[nCountInit++] = nOffset
                 oSubStruct.pStructSet = function (){               // бьем по рукам, чтобы не пытались..
@@ -106,7 +109,7 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
             //errorNullPointer()
         }
     } 
-    function fieldRefStruct(nOffset, fnGetWrp, fieldName){      // "ленивая" инициализация ссылочной структуры
+    function fieldRefStruct(nOffset, fnWrpMaker, fieldName){      // "ленивая" инициализация ссылочной структуры
         return function fnRefStructInit(){                      
             //PrintLog('Попытка инициализации ' + pStruct)
             if (pStruct){
@@ -124,7 +127,7 @@ function makeStructWrapper(pStruct, oStruct, nSize, fullInit){
                         }
                         errorNullPointer()
                     }
-                    fnGetWrp(pSubStruct, oRefStruct, fullInit - 1)
+                    fnWrpMaker(pSubStruct, oRefStruct, fullInit - 1)
                     fn_pStructSet = oRefStruct.pStructSet       // забираем у ссылочной структуры метод pStructSet() 
                     oRefStruct.pStructSet = function (){
                         throw new Error("Нельзя изменить указатель референсной структуры!")
@@ -255,18 +258,19 @@ function isInteger(vData){
     return Math.floor(vData) === vData
 }
 
-// test_makeStructWrapper()
+//test_makeStructWrapper() // Простой тест структур
 function test_makeStructWrapper(){
     AkelPad.Include("log.js")
     
-    var st = makeStructWrapper(0/*struct pointer*/, 0, 34, false,
-                               "name", 0, 1, 7, /*name, offset, type, [length]*/
-                               "age", 14, 4,
-                               "speciality", 18, 1, 8)
+    // makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    var st = makeStructWrapper(0, 0, 0, [34,14,18]/*size, offsets*/,
+                               ["name", 1, 6, /*name, type, [length]*/
+                               "age", 4,
+                               "speciality", 1, 8])
     PrintLog("Size = " + st.size())
     
     var sDat = "Сергей \x23 Электрик"
-    PrintLog(sDat.length * 2)
+    //PrintLog(sDat.length * 2)
         
     st.pStructSet(AkelPad.MemStrPtr(sDat))
     PrintLog(st.name() + "\n" +
@@ -297,11 +301,11 @@ function test_makeStructWrapper(){
       int nLine;                  //Номер строки в документе, начиная с нуля.
       AELINEDATA *lpLine;         //Указатель на структуру AELINEDATA.
       int nCharInLine;            //Позиция символа в строке.
-    } AECHARINDEX;
-    typedef struct {              //size 8/16
-      INT_PTR cpMin;
-      INT_PTR cpMax;
-    } CHARRANGE64;
+    } AECHARINDEX;                123
+//    typedef struct {              //size 8/16
+//      INT_PTR cpMin;
+//      INT_PTR cpMax;
+//    } CHARRANGE64;
     typedef struct {              //size 24/48
       AECHARINDEX ciMin;          //Индекс первого символа в диапазоне.
       AECHARINDEX ciMax;          //Индекс последнего символа в диапазоне.
@@ -313,19 +317,7 @@ function test_makeStructWrapper(){
       DWORD dwType;          // 04      52/104 См. определения AETCT_*.
       BOOL bColumnSel;       // 04      58/108 Колоночное выделение.
       CHARRANGE64 crRichSel; //08/16    62/112 Текущее выделение (смещение RichEdit).
-    } AENTEXTCHANGE;
-    typedef struct _AELINEDATA {   
-      struct _AELINEDATA *next;   //Указатель на следующую структуру AELINEDATA.
-      struct _AELINEDATA *prev;   //Указатель на предыдущую структуру AELINEDATA.
-      wchar_t *wpLine;            //Текст строки, заканчивающийся NULL-символом.
-      int nLineLen;               //Длина wpLine, не включая завершающий NULL-символ.
-      BYTE nLineBreak;            //Новая строка: AELB_EOF, AELB_R, AELB_N, AELB_RN, AELB_RRN или AELB_WRAP.
-      BYTE nLineFlags;            //Зарезервировано.
-      WORD nReserved;             //Зарезервировано.
-      int nLineWidth;             //Ширина строки в пикселях.
-      int nSelStart;              //Начальная позиция символа выделения в строке.
-      int nSelEnd;                //Конечная позиция символа выделения в строке.
-    } AELINEDATA;    
+    } AENTEXTCHANGE; //safadsads kljlkj asdf 
     typedef struct {              //size 16/32
       //Стандартный NMHDR         //size 12/24
       HWND hwndFrom;
@@ -340,16 +332,152 @@ function test_makeStructWrapper(){
 */
 
 //AkelPad.Include("MemHelp.js"); 
-test_getStructsMetadata()
+//test_getStructsMetadata()
 function test_getStructsMetadata(){
-    AkelPad.Include("log.js")
-    var sText = AkelPad.GetTextRange(13850, 16286)
-    //PrintLog(sText); WScript.Quit()
+    //AkelPad.Include("log.js")
+    var sText = AkelPad.GetTextRange(14123, 16566)
+    
     var oStructures = getStructsMetadata(sText)
     
     //PrintLog(oStructures)
 }
-function getStructsMetadata(sText){
+//AkelPad.Include("log.js")
+//makeStructWrapperFunctions()
+// Создание JS-функций - фабрик врапперов структур
+// если выделен текст функция парсит только выделение
+// если ни чего не выделено, парсится вся страница
+function makeStructWrapperFunctions(){    
+    //AkelPad.Include("log.js")
+    //if (AkelPad.IsInclude()) return
+    try{
+        var selStart = AkelPad.GetSelStart()
+        var selEnd = AkelPad.GetSelEnd()
+        if (selStart === selEnd) {selStart = 0; selEnd = -1}
+        var sText = AkelPad.GetTextRange(selStart, selEnd)      // получаем текст с активной вкладки
+        
+        var oStopList = getExistedStructWrappersList(sText)     // ищем уже имеющиеся функции-врапперы
+        var oIncludList = getAllIncludes(sText), fileName
+        for(fileName in oIncludList){                           // продолжаем искать в инклюдах
+            getExistedStructWrappersList(oIncludList[fileName], oStopList)
+        }
+        var oStructs = getStructsMetadata(sText, 0, oStopList)  // получаем данные о структурах из текста
+        
+        var structName
+        var aOut = [], maxCnt = -1, i = 0
+        for(structName in oStructs){
+            var oStruct = oStructs[structName]
+            delete oStruct.fieldsText; delete oStruct.name; delete oStruct.alignSize32; delete oStruct.alignSize64
+            var offsets32 = oStruct.offsets32; delete oStruct.offsets32
+            var offsets64 = oStruct.offsets64; delete oStruct.offsets64
+            var offsets32[0] = oStruct.size32; delete oStruct.size32
+            var offsets64[0] = oStruct.size64; delete oStruct.size64
+            //offsets32.splice(0, 1); offsets64.splice(0, 1)           
+            /*function AENTEXTCHANGEwrp(pStruct, oStruct, fullInit){
+                var aOffsets = (_X64)?[128,32,80,104,108,112]:[68,16,40,52,56,60]
+                var aDataFields = ["hdr", 6, AENMHDRwrp,
+                                   "crSel", 6 ,AECHARRANGEwrp,
+                                   "ciCaret", 6, AECHARRANGEwrp,
+                                   "dwType", 3, 
+                                   "bColumnSel", 3,
+                                   "crRichSel", 6, CHARRANGE64wrp]
+                return (AENTEXTCHANGEwrp = function (pStruct, oStruct, fullInit){
+                    return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+                })(pStruct, oStruct, fullInit)
+            } */ 
+            var funName = structName + 'wrp'
+            var sFunc = 
+            'function ' + funName + '(pStruct, oStruct, fullInit){\n' + 
+            '    var aOffsets = (_X64)?[' + offsets64.join(',') + ']:[' + offsets32.join(',') + ']\n'+
+            "    var aDataFields = ["
+            var sFields = ""
+            for (fieldName in oStruct){
+                var aField = oStruct[fieldName]
+                var typeName = aField[0]
+                var typeFlag = aField[1]
+                var arLen = aField[2]
+                sFields += "                       '" + fieldName + "', " + typeFlag
+                if(typeFlag === 6 || typeFlag === 9)
+                    sFields += ", " + typeName + "wrp"
+                else if (typeFlag === 0 || typeFlag === 1) 
+                    sFields += ", -1"
+                
+                sFields += (!arLen) ? ",\n" : ', /*' + arLen + ' = ' + aField[3] + '*/\n'            
+            }
+            
+            sFunc += sFields.slice(23, -2) + "]\n" +
+            "    return (" + funName + " = function (pStruct, oStruct, fullInit){\n" +
+            "        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)\n" +
+            "    })(pStruct, oStruct, fullInit)\n}"
+            if (maxCnt < i){ 
+                maxCnt += 10
+                aOut.realloc(maxCnt)
+            }
+            aOut[i++] = sFunc
+        }
+        aOut.realloc(i)
+        return aOut            
+    }catch(e){
+        PrintLog(e.message)
+    }
+}
+// получение списка имен структур, для которых уже имеются функции вида "function STRUCT_NAMEwrp("
+function getExistedStructWrappersList(sText, oWrpFnList){
+    //AkelPad.GetAkelDir
+    reWrpFn = /^function (\w+)(?:wrp\()/g //function STRUCT_NAMEwrp(
+    if (!oWrpFnList) oWrpFnList = {}
+    var match
+    while(match = reWrpFn.exec(sText)){
+        var structName = match[1]
+        if (!oWrpFnList[structName]) oWrpFnList[structName] = true
+    }
+    return oWrpFnList
+}
+/*(function test_getAllIncludes(){
+    AkelPad.Include("log.js")
+    try{
+        var sText = AkelPad.GetTextRange(0, -1)
+        
+        var oIncludList = getAllIncludes(sText) 
+        
+        //PrintLog(oIncludList)
+    }catch(e){
+        PrintLog('testgetAllIncludes: ' + e.message)
+    }
+    
+})()*/
+// получение списка всех подключаемых файлов и их контента
+// скрипт просматривает только верхнюю часть (1е 50 строк)
+function getAllIncludes(sText, oIncludList){
+    //try{
+    if (!oIncludList) oIncludList = {}
+    var includePath = AkelPad.GetAkelDir(6 /*ADTYPE_INCLUDE*/) + "\\"
+    var reHeadText = /(^.*?[\r\n]+){50}/gm    
+    var reInclude = /(\/\/.*?[\r\n]{1,2}|\/\*.*?\*\/)|(AkelPad\.Include\("(\w+\.js)"\))/g
+    
+    var match = reHeadText.exec(sText)
+    if (match) sText = match[0] // берем только верхние 50 строк в которых с бОльшей вероятностью прописаны все инклюды
+    //PrintLog('sText.length = ' + sText.length)
+    
+    while(match = reInclude.exec(sText)){
+        var fileName = match[3]
+        if (fileName){
+            //PrintLog(fileName)
+            if (!oIncludList[fileName]){ // исключаем повторную обработку одного и того же инклюда
+                var fileText = AkelPad.ReadFile(includePath + fileName)
+                oIncludList[fileName] = fileText
+                getAllIncludes(fileText, oIncludList)
+            }
+        }
+    }
+    return oIncludList
+//    } catch(e){
+//        PrintLog('getAllIncludes: ' + e.message)
+//    }
+}
+// Поиск определений C-структур и сбор из них всех данных об этих структурах в словарь объектов с данными
+function getStructsMetadata(sText, oStructs, oStopList){
+    var reStruct = /(\/[\/\*])?\s*typedef\s+struct(\s+[_\w]+)?\s*\{(.*?)\}\s*(\w+)(.*?[\r\n]+)?/g
+    //Данные для getStructData()
     var DT_ANSI         = 0
     var DT_UNICODE      = 1
     var DT_QWORD        = 2
@@ -361,49 +489,43 @@ function getStructsMetadata(sText){
     var DT_PTR_ANSI     = 7
     var DT_PTR_UNICODE  = 8
     var DT_PTR_STRUCT   = 9
-    var reStruct = /typedef\s+struct(\s+[_\w]+)?\s*\{(.*?)\}\s*(\w+)/g
+    var MAX_PATH = 260
     var typeFlags = [0, DT_BYTE, DT_WORD, 0, DT_DWORD, 0, 0, 0, DT_QWORD]
-    //Данные для getStructData()
     var ptrFlag = 0 //-1 
-        // Standard C/C++ Types
-        // Windows Data Types (based on https://learn.microsoft.com/en-us/windows/win32/winprog/windows-data-types)
-        // AkelEdit Types from AkelEdit.h
     var dictTypeSizes = {
+        // Standard C/C++ Types
         "char": 1, "short": 2, "int": 4, "long": 4, "long long": 8, "float": 4, "double": 8, "long double": 8, "wchar_t": 2, "bool": 1, "void": ptrFlag,
+        // Windows Data Types (based on https://learn.microsoft.com/en-us/windows/win32/winprog/windows-data-types)
         "APIENTRY": ptrFlag, "ATOM": 2, "BOOL": 4, "BOOLEAN": 1, "BYTE": 1, "CALLBACK": ptrFlag, "CCHAR": 1, "CHAR": 1, "COLORREF": 4, "CONST": ptrFlag, "DWORD": 4, "DWORDLONG": 8, "DWORD_PTR": ptrFlag, "DWORD32": 4, "DWORD64": 8, "FLOAT": 4, "HACCEL": ptrFlag, "HALF_PTR": (_X64 ? 4 : 2), "HANDLE": ptrFlag, "HBITMAP": ptrFlag, "HBRUSH": ptrFlag, "HCOLORSPACE": ptrFlag, "HCONV": ptrFlag, "HCONVLIST": ptrFlag, "HCURSOR": ptrFlag, "HDC": ptrFlag, "HDDEDATA": ptrFlag, "HDESK": ptrFlag, "HDROP": ptrFlag, "HDWP": ptrFlag, "HENHMETAFILE": ptrFlag, "HFILE": 4, "HFONT": ptrFlag, "HGDIOBJ": ptrFlag, "HGLOBAL": ptrFlag, "HHOOK": ptrFlag, "HICON": ptrFlag, "HINSTANCE": ptrFlag, "HKEY": ptrFlag, "HKL": ptrFlag, "HLOCAL": ptrFlag, "HMENU": ptrFlag, "HMETAFILE": ptrFlag, "HMODULE": ptrFlag, "HMONITOR": ptrFlag, "HPALETTE": ptrFlag, "HPEN": ptrFlag, "HRESULT": 4, "HRGN": ptrFlag, "HRSRC": ptrFlag, "HSZ": ptrFlag, "HWINSTA": ptrFlag, "HWND": ptrFlag, "INT": 4, "INT_PTR": ptrFlag, "INT8": 1, "INT16": 2, "INT32": 4, "INT64": 8, "LANGID": 2, "LCID": 4, "LCTYPE": 4, "LGRPID": 4, "LONG": 4, "LONGLONG": 8, "LONG_PTR": ptrFlag, "LONG32": 4, "LONG64": 8, "LPARAM": ptrFlag, "LPBOOL": ptrFlag, "LPBYTE": ptrFlag, "LPCOLORREF": ptrFlag, "LPCSTR": ptrFlag, "LPCTSTR": ptrFlag, "LPCVOID": ptrFlag, "LPCWSTR": ptrFlag, "LPDWORD": ptrFlag, "LPHANDLE": ptrFlag, "LPINT": ptrFlag, "LPLONG": ptrFlag, "LPSTR": ptrFlag, "LPTSTR": ptrFlag, "LPVOID": ptrFlag, "LPWORD": ptrFlag, "LPWSTR": ptrFlag, "LRESULT": ptrFlag, "PBOOL": ptrFlag, "PBOOLEAN": ptrFlag, "PBYTE": ptrFlag, "PCHAR": ptrFlag, "PCSTR": ptrFlag, "PCTSTR": ptrFlag, "PCWSTR": ptrFlag, "PDWORD": ptrFlag, "PDWORDLONG": ptrFlag, "PDWORD_PTR": ptrFlag, "PDWORD32": ptrFlag, "PDWORD64": ptrFlag, "PFLOAT": ptrFlag, "PHALF_PTR": ptrFlag, "PHANDLE": ptrFlag, "PHKEY": ptrFlag, "PINT": ptrFlag, "PINT_PTR": ptrFlag, "PINT8": ptrFlag, "PINT16": ptrFlag, "PINT32": ptrFlag, "PINT64": ptrFlag, "PLCID": ptrFlag, "PLONG": ptrFlag, "PLONGLONG": ptrFlag, "PLONG_PTR": ptrFlag, "PLONG32": ptrFlag, "PLONG64": ptrFlag, "POINTER_32": ptrFlag, "POINTER_64": ptrFlag, "POINTER_SIGNED": ptrFlag, "POINTER_UNSIGNED": ptrFlag, "PSHORT": ptrFlag, "PSIZE_T": ptrFlag, "PSSIZE_T": ptrFlag, "PSTR": ptrFlag, "PTBYTE": ptrFlag, "PTCHAR": ptrFlag, "PTSTR": ptrFlag, "PUCHAR": ptrFlag, "PUHALF_PTR": ptrFlag, "PUINT": ptrFlag, "PUINT_PTR": ptrFlag, "PUINT8": ptrFlag, "PUINT16": ptrFlag, "PUINT32": ptrFlag, "PUINT64": ptrFlag, "PULONG": ptrFlag, "PULONGLONG": ptrFlag, "PULONG_PTR": ptrFlag, "PULONG32": ptrFlag, "PULONG64": ptrFlag, "PUSHORT": ptrFlag, "PVOID": ptrFlag, "PWCHAR": ptrFlag, "PWORD": ptrFlag, "PWSTR": ptrFlag, "QWORD": 8, "SC_HANDLE": ptrFlag, "SC_LOCK": ptrFlag, "SERVICE_STATUS_HANDLE": ptrFlag, "SHORT": 2, "SIZE_T": ptrFlag, "SSIZE_T": ptrFlag, "TBYTE": 1, "TCHAR": 2, "UCHAR": 1, "UHALF_PTR": (_X64 ? 4 : 2), "UINT": 4, "UINT_PTR": ptrFlag, "UINT8": 1, "UINT16": 2, "UINT32": 4, "UINT64": 8, "ULONG": 4, "ULONGLONG": 8, "ULONG_PTR": ptrFlag, "ULONG32": 4, "ULONG64": 8, "UNICODE_STRING": ptrFlag, "USHORT": 2, "USN": 8, "VOID": ptrFlag, "WCHAR": 2, "WINAPI": ptrFlag, "WORD": 2, "WPARAM": ptrFlag,
-        "AEHDOC": ptrFlag, "AEHPRINT": ptrFlag, "AEHTHEME": ptrFlag, "AEHDELIMITER": ptrFlag, "AEHWORD": ptrFlag, "AEHQUOTE": ptrFlag, "AEHMARKTEXT": ptrFlag, "AEHMARKRANGE": ptrFlag, "HSTACK": ptrFlag, "AEEditProc": ptrFlag, "AEStreamCallback": ptrFlag, "AEGetHighLightCallback": ptrFlag, "AEPaintCallback": ptrFlag
-    }            
-    //var re1 = /^\s*(struct\s+_)?(\w+)\s+(\*\s*)?(\w+)/gm
+        // AkelEdit Types from AkelEdit.h
+        "AEHDOC": ptrFlag, "AEHPRINT": ptrFlag, "AEHTHEME": ptrFlag, "AEHDELIMITER": ptrFlag, "AEHWORD": ptrFlag, "AEHQUOTE": ptrFlag, "AEHMARKTEXT": ptrFlag, "AEHMARKRANGE": ptrFlag, "HSTACK": ptrFlag, "AEEditProc": ptrFlag, "AEStreamCallback": ptrFlag, "AEGetHighLightCallback": ptrFlag, "AEPaintCallback": ptrFlag, "PLUGINPROC": ptrFlag
+    } 
+    var reFieldBas = /(struct\s+_)?(\w+)\s+(\*\s*)?(\w+)(\[(\w+)\])?;/gm    //^(\/\/)?\s*   
     
-    getStructsMetadata = function (sText){      
-        var oStructs = {}
+    getStructsMetadata = function (sText, oStructs, oStopList){      
+        if (!oStructs) oStructs = {}
+        if (!oStopList) oStopList = {}
         var match
         while (match = reStruct.exec(sText)){
-            var structName = match[3]
+            //PrintLog(match[0])
+            var structName = match[4]
+            //PrintLog(structName)
             if (!structName) {WScript.Echo("Не определено имя структуры!"); WScript.Quit();}
-            (oStructs[structName] = {}).name = structName
-            oStructs[structName].fieldsText = match[2]        
+            if (!oStructs[structName]){         // отсекаем повторные определения структуры
+            if (!oStopList[structName])     // отсекаем имена структур из стоплиста
+                oStructs[structName] = {name: structName, fieldsText: match[3]} 
+            }       
         }
         for(structName in oStructs){
             var oStructData = oStructs[structName]
-            if(!oStructData.size64) getStructData(oStructData)
-            PrintLog(oStructData)
+            if(!oStructData.size64) 
+                getStructData(oStructData, reFieldBas)
+            //PrintLog(oStructData)
         }
         return oStructs
-         
-        function getStructData(oStructData){
-        //    try {            
-            /*0 - char(Ansi)   флаги типов
-            1 - wchar_t (Ubicode)
-            2 - QWORD
-            3 - DWORD
-            4 - WORD
-            5 - BYTE
-            6 - Struct
-            7 - *char
-            8 - *wchar_t
-            9 = pStruct*/            
-            //getStructData = function(oStructData){
+                 
+        function getStructData(oStructData, reField){
+            try {            
             var structName = oStructData.name
             var sFields = oStructData.fieldsText
             var arOffsets32 = Array(5)
@@ -413,7 +535,6 @@ function getStructsMetadata(sText){
             
             var typeSize, typeSize64, typeSize32, offset64 = 0, offset32 = 0, maxAlignSize64 = 1, maxAlignSize32 = 1
             var match, structFlag, typeFlag, oStructData2
-            var reField = /^\s*(struct\s+_)?(\w+)\s+(\*\s*)?(\w+)/gm
             while (match = reField.exec(sFields)){
                 var typeName = match[2]                    
                 var fieldName = match[4]
@@ -445,14 +566,10 @@ function getStructsMetadata(sText){
                         break
                     case undefined:
                         oStructData2 = oStructs[typeName]                             
-                        if (oStructData2){
-                            //PrintLog('offset64 = ' + offset64)
-                            if (!(typeSize32 = oStructData2.size32)){
-                                //WScript.Echo("Рекурсивный вызов: " + typeName)
-                                //PrintLog(fieldCount)
-                                getStructData(oStructData2)
-                                //PrintLog('offset64 = ' + offset64); WScript.Quit()
-                                //PrintLog(fieldCount)
+                        if (oStructData2){                            
+                            if (!(typeSize32 = oStructData2.size32)){  // если oStructs[typeName] не обработана                              
+                                //WScript.Echo("Рекурсивный вызов")
+                                getStructData(oStructData2, new RegExp(reFieldBas))                                
                                 typeSize32 = oStructData2.size32                                    
                             } 
                             typeSize64 = oStructData2.size64
@@ -473,15 +590,33 @@ function getStructsMetadata(sText){
                         typeSize32 = typeSize64 = typeSize
                         break
                     } 
-                } 
+                }                
+                
+                var sArLen = match[6]
+                if (!sArLen){
+                    oStructData[fieldName] = [typeName, typeFlag]               // !!!!!!!
+                    nArLen = 1
+                } else {
+                    //PrintLog('sArLen = ' + sArLen) //#################!!!!!!!!!!!!!!!!!!#########
+                    try {
+                        nArLen = eval(sArLen)
+                    } catch(e) {
+                        PrintLog(e.message)
+                        WScript.Echo("Не известно значение " + sArLen + "!\n" + 
+                            "Добавьте соответствующую переменную/константу с таким именем \n" +
+                            "чтобы правильно посчитать смещения структуры " + oStructData.name)
+                        WScript.Quit()
+                    }
+                    
+                    oStructData[fieldName] = [typeName, typeFlag, sArLen, nArLen]
+                    
+                }
                 
                 if (maxCount < fieldCount) {
                     maxCount += 10
                     arOffsets32.realloc(maxCount)
                     arOffsets64.realloc(maxCount)
-                }                        
-                //PrintLog(fieldName + ' ' + typeName + ' ' + typeFlag)
-                oStructData[fieldName] = [typeName, typeFlag]
+                }                                      
                 if(!structFlag){
                     arOffsets32[fieldCount] = offset32 = alignOffset(offset32, typeSize32)
                     arOffsets64[fieldCount] = offset64 = alignOffset(offset64, typeSize64)                        
@@ -489,8 +624,8 @@ function getStructsMetadata(sText){
                         if (maxAlignSize32 < typeSize32) maxAlignSize32 = typeSize32
                     if (maxAlignSize64 < 8) 
                         if (maxAlignSize64 < typeSize64) maxAlignSize64 = typeSize64
-                    offset32 += typeSize32 
-                    offset64 += typeSize64 
+                    offset32 += typeSize32 * nArLen
+                    offset64 += typeSize64 * nArLen
                 } else {
                     structFlag = false
                     arOffsets32[fieldCount] = offset32 = alignOffset(offset32, oStructData2.alignSize32)
@@ -502,8 +637,8 @@ function getStructsMetadata(sText){
                     if (maxAlignSize64 < 8){ 
                         if (maxAlignSize64 < oStructData2.alignSize64) maxAlignSize64 = oStructData2.alignSize64
                     }
-                    offset32 += oStructData2.size32 
-                    offset64 += oStructData2.size64
+                    offset32 += oStructData2.size32 * nArLen
+                    offset64 += oStructData2.size64 * nArLen
                 }
                 fieldCount++
             }
@@ -514,14 +649,12 @@ function getStructsMetadata(sText){
             oStructData.alignSize32 = maxAlignSize32
             oStructData.alignSize64 = maxAlignSize64
             return oStructData
-            //}
-            //return getStructData(oStructData)
-        //    }catch (e){
-        //        PrintLog(e.message)
-        //    }
-        }
+            }catch (e){
+                PrintLog(e.message)
+            }
+        }    
     }
-    return getStructsMetadata(sText)
+    return getStructsMetadata(sText, oStructs, oStopList)        
 }
 //WScript.Echo(alignOffset(20, 8))
 function alignOffset(nOffset, nTypeSize) {

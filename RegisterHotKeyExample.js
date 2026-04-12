@@ -37,7 +37,7 @@ function RegisterHotkey(wszScriptName, wHotkey){
         // if (pfElement = (PLUGINFUNCTION *)SendMessage(hMainWnd, AKD_DLLFINDW, (WPARAM)wszFunction, 0)) {
         if (pfElement = AkelPad.SendMessage(hMainWnd, 1331/*AKD_DLLFINDW*/, wszFunction.StrPtr(), 0)) { 
             // Функция уже существует - просто обновляем её горячую клавишу
-            var opf = makePLUGINFUNCTIONwrp(pfElement)      // Создаем объект-враппер структуры PLUGINFUNCTION
+            var opf = PLUGINFUNCTIONwrp(pfElement)      // Создаем объект-враппер структуры PLUGINFUNCTION
             //PrintLog("Замена сочетания")
             // Если клавиша сброшена (0) и функция не активна и не в автозагрузке то удаляем её из системы
 			// if (!pfElement->wHotkey && !pfElement->bRunning && !pfElement->bAutoLoad)
@@ -51,7 +51,7 @@ function RegisterHotkey(wszScriptName, wHotkey){
 			if (wHotkey) {
 			    var spa = makeStrBuff(16)                   // выделяем память под структуру PLUGINADDW, 32/2 - размер структуры (в x64)
 			    var ppa = spa.StrPtr()
-                var opa = makePLUGINADDWwrp(ppa)            // Создаем объект-враппер структуры PLUGINADDW
+                var opa = PLUGINADDWwrp(ppa)            // Создаем объект-враппер структуры PLUGINADDW
 			    // pa.pFunction = wszFunction;   
                 opa.pFunctionSet(wszFunction.StrPtr())      // Имя функции
 				// pa.wHotkey = wHotkey;  
@@ -72,7 +72,7 @@ function RegisterHotkey(wszScriptName, wHotkey){
 				    // Устанавливаем параметр для обработчика - указатель на имя скрипта
 					// lpParameter будет передан в HotkeyProc при нажатии
 					// pfElement->lpParameter = pfElement->wszFunction + xstrlenW(wszPrefix)
-					opf = makePLUGINFUNCTIONwrp(pfElement)
+					opf = PLUGINFUNCTIONwrp(pfElement)
 					opf.lpParameterSet(opf.wszFunctionPtr() + wszPrefix.length * 2)
 				}
 			}
@@ -105,7 +105,7 @@ function GetHotkeyProc(wHotkey){
     var pwszHotkeyOwner = StrPtr(wszHotkeyOwner)
     if (AkelPad.SendMessage(hMainWnd, 1338/*AKD_CHECKHOTKEY*/, wHotkey, pwszHotkeyOwner)){
         var pfElement = AkelPad.SendMessage(hMainWnd, 1331/*AKD_DLLFINDW*/, pwszHotkeyOwner, 0)
-        if (pfElement) return makePLUGINFUNCTIONwrp(pfElement).PluginProc() 
+        if (pfElement) return PLUGINFUNCTIONwrp(pfElement).PluginProc() 
     } 
 }
 
@@ -118,54 +118,83 @@ function GetHotkeyProc(wHotkey){
   void *lpParameter;          // 24/16    Procedure parameter.
 } PLUGINADDW;                 // 32/20    Общий размер*/  
 // Создание объекта-враппера структуры PLUGINADDW
-function makePLUGINADDWwrp(pStruct, oStruct){
-    return oStruct = makeStructWrapper(pStruct, oStruct, (_X64 ? 32 : 20), 0, 
-                            "pFunction", 0, 2,
-                            "wHotkey", (_X64 ? 8 : 4), 4,  
-                            "bAutoLoad", (_X64 ? 12 : 8), 3,
-                            "PluginProc", (_X64 ? 16 : 12), 2,
-                            "lpParameter", (_X64 ? 24 : 16), 2)
-} 
+function PLUGINADDWwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[32,8,12,16,24]:[20,4,8,12,16]
+    var aDataFields = ['pFunction', 8,
+                       'wHotkey', 4,
+                       'bAutoLoad', 3,
+                       'PluginProc', 2,
+                       'lpParameter', 2]
+    return (PLUGINADDWwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
+}
+//function PLUGINADDWwrp(pStruct, oStruct){
+//    return oStruct = makeStructWrapper(pStruct, oStruct, (_X64 ? 32 : 20), 0, 
+//                            "pFunction", 0, 2,
+//                            "wHotkey", (_X64 ? 8 : 4), 4,  
+//                            "bAutoLoad", (_X64 ? 12 : 8), 3,
+//                            "PluginProc", (_X64 ? 16 : 12), 2,
+//                            "lpParameter", (_X64 ? 24 : 16), 2)
+//} 
 /*typedef struct {      
-    struct _PLUGINFUNCTION *next;     // 0x00 : 0x00    — указатель на следующий элемент в списке
-    struct _PLUGINFUNCTION *prev;     // 0x08 : 0x04    — указатель на предыдущий элемент в списке
-    const BYTE *pFunction;            // 0x10 : 0x08    — указатель на имя функции
+    struct _PLUGINFUNCTION *next;     // 0 : 0      — указатель на следующий элемент в списке
+    struct _PLUGINFUNCTION *prev;     // 8 : 4      — указатель на предыдущий элемент в списке
+    const BYTE *pFunction;            // 16 : 8     — указатель на имя функции
                                       //                  Формат: "Plugin::Function"
                                       //                  const char *pFunction      если bOldWindows == TRUE
                                       //                  const wchar_t *pFunction   если bOldWindows == FALSE
-    char szFunction[MAX_PATH];        // 0x18 : 0x0C    — имя функции в ANSI кодировке (260 байт)
-    wchar_t wszFunction[MAX_PATH];    // 0x11C : 0x110  — имя функции в Unicode кодировке (520 байт)
+    char szFunction[MAX_PATH];        // 24 : 12    — имя функции в ANSI кодировке (260 байт)
+    wchar_t wszFunction[MAX_PATH];    // 284 : 272  — имя функции в Unicode кодировке (520 байт)
                                       //                  Максимум MAX_PATH символов (обычно 260)
-    int nFunctionLen;                 // 0x324 : 0x318  — длина имени функции в символах
-    WORD wHotkey;                     // 0x328 : 0x31C  — горячая клавиша функции
+    int nFunctionLen;                 // 804 : 792  — длина имени функции в символах
+    WORD wHotkey;                     // 808 : 796  — горячая клавиша функции
                                       //                  Формат: старший байт = флаги модификаторов (HOTKEYF_*)
                                       //                  младший байт = виртуальный код клавиши (VK_*)
                                       //                  См. документацию по HKM_GETHOTKEY в MSDN
-    BOOL bAutoLoad;                   // 0x32C : 0x320  — флаг автозагрузки функции
+    BOOL bAutoLoad;                   // 812 : 800  — флаг автозагрузки функции
                                       //                  TRUE  — функция загружается автоматически при старте
                                       //                  FALSE — функция не загружается автоматически
-    BOOL bRunning;                    // 0x330 : 0x324  — флаг выполнения функции
+    BOOL bRunning;                    // 816 : 804  — флаг выполнения функции
                                       //                  TRUE  — функция выполняется в данный момент
                                       //                  FALSE — функция не выполняется
-    PLUGINPROC PluginProc;            // 0x338 : 0x328  — указатель на функцию-обработчик
+    PLUGINPROC PluginProc;            // 824 : 808  — указатель на функцию-обработчик
                                       //                  Прототип: BOOL CALLBACK PluginProc(void *lpParameter, LPARAM lParam, DWORD dwSupport)
-    void *lpParameter;                // 0x340 : 0x32C  — пользовательские данные для обработчика
+    void *lpParameter;                // 832 : 812  — пользовательские данные для обработчика
                                       //                  В случае Scripts плагина: указатель на имя скрипта
-    int nRefCount;                    // 0x348 : 0x330  — счётчик ссылок (внутреннее использование)
+    int nRefCount;                    // 840 : 816  — счётчик ссылок (внутреннее использование)
                                       //                  Используется для управления временем жизни структуры
-} PLUGINFUNCTION;                     // 0x350 : 0x334  — размер структуры (820/848 байт)*/
+} PLUGINFUNCTION;                     // 848 : 820  — размер структуры (820/848 байт)*/
 // Создание объекта-враппера структуры PLUGINFUNCTION
-function makePLUGINFUNCTIONwrp(pStruct, oStruct){
-    return oStruct = makeStructWrapper(pStruct, oStruct, (_X64 ? 0x350 : 0x334), 0, 
-                                /*"next", 0, 2,
-                                "prev", (_X64 ? 8 : 4), 2,*/
-                                "wszFunction", (_X64 ? 0x11C : 0x110), 1, -1,
-                                "wHotkey", (_X64 ? 0x328 : 0x31C), 4,  
-                                "bAutoLoad", (_X64 ? 0x32C : 0x320), 3,
-                                "bRunning", (_X64 ? 0x330 : 0x324), 3,
-                                "PluginProc", (_X64 ? 0x338 : 0x328), 2,
-                                "lpParameter", (_X64 ? 0x340 : 0x32C), 2)
-} 
+function PLUGINFUNCTIONwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[848,8,16,24,284,804,808,812,816,824,832,840]:[820,4,8,12,272,792,796,800,804,808,812,816]
+    var aDataFields = ['next', 9, PLUGINFUNCTIONwrp,
+                       'prev', 9, PLUGINFUNCTIONwrp,
+                       'pFunction', 2,
+                       'szFunction', 0, -1, /*MAX_PATH = 260*/
+                       'wszFunction', 1, -1, /*MAX_PATH = 260*/
+                       'nFunctionLen', 3,
+                       'wHotkey', 4,
+                       'bAutoLoad', 3,
+                       'bRunning', 3,
+                       'PluginProc', 2,
+                       'lpParameter', 2,
+                       'nRefCount', 3]
+    return (PLUGINFUNCTIONwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
+}
+//function PLUGINFUNCTIONwrp(pStruct, oStruct){
+//    return oStruct = makeStructWrapper(pStruct, oStruct, (_X64 ? 0x350 : 0x334), 0, 
+//                                /*"next", 0, 2,
+//                                "prev", (_X64 ? 8 : 4), 2,*/
+//                                "wszFunction", (_X64 ? 284 : 272), 1, -1,
+//                                "wHotkey", (_X64 ? 808 : 796), 4,  
+//                                "bAutoLoad", (_X64 ? 812 : 800), 3,
+//                                "bRunning", (_X64 ? 816 : 804), 3,
+//                                "PluginProc", (_X64 ? 824 : 808), 2,
+//                                "lpParameter", (_X64 ? 832 : 812), 2)
+//} 
 
 //testtest(); WScript.Quit()
 function testtest(){
@@ -179,7 +208,7 @@ function testtest(){
     var nOwner = AkelPad.SendMessage(hMainWnd, 1338/*AKD_CHECKHOTKEY*/, wHotkey, wszHotkeyOwner.StrPtr())
     if (!nOwner) return
     var pfElement = AkelPad.SendMessage(hMainWnd, 1331/*AKD_DLLFINDW*/, wszHotkeyOwner.StrPtr(), 0)
-    var opf = makePLUGINFUNCTIONwrp(pfElement) 
+    var opf = PLUGINFUNCTIONwrp(pfElement) 
 //    try{
     var pnext
     PrintLog(opf.PluginProc())

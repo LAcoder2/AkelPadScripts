@@ -119,4 +119,16 @@ function makeAENTEXTCHANGEwrp(pStruct, oStruct, fullInit){
                                         "bColumnSel", (_X64 ? 108 : 56), 3,
                                         "crRichSel", (_X64 ? 112 : 60), 6, makeCHARRANGE64wrp
                                     )
+}
+function makeAENTEXTCHANGEwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64) ? [128,32,80,104,108,112] : [68,16,40,52,56,60]
+    var aDataFields = ["hdr", 6, makeAENMHDRwrp,
+                      "crSel", 6, makeAECHARRANGEwrp,
+                      "ciCaret", 6, makeAECHARRANGEwrp,
+                      "dwType", 3, 
+                      "bColumnSel", 3,
+                      "crRichSel", 6, makeCHARRANGE64wrp]
+    return (makeAENTEXTCHANGEwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
 } 

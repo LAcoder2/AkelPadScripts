@@ -1,4 +1,4 @@
-﻿Sub PrintLog(value, Optional bClear)
+﻿Sub PrintLog(value, bClear)
     Dim strValue
     ' Преобразуем значение в строку в зависимости от его типа
     Select Case TypeName(value)
@@ -22,6 +22,7 @@
     ' Параметр 4 = MT_LOADFONT (использовать шрифт редактора) + MT_NOCRLF (обработка переноса)
     Dim flag
     If bClear = True Then 
+        flag = 0
     Else
         flag = 2
     end if

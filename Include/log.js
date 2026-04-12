@@ -45,8 +45,8 @@ function PrintLog(value, append, alias) {
         } else if (value instanceof Array) { 
             //strValue = value.toString()
             strValue = "[\n  " + value.join(",\n  ") + "\n]"
-        } else if (value instanceof Error) {
-            strValue = "Error: " + value.message;
+//        } else if (value instanceof Error) {
+//            strValue = "Error: " + value.message;
         } else {
             strValue = "{"
             for(key in value) {
