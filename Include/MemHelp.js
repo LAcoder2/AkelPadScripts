@@ -12,7 +12,7 @@
 // если fullInit === 1, - все свойства, соответствующие дочерним структурам, и их свойства, соотв. их дочерним структурам любой вложенности будут инициализированы
 // если fullInit > 1,   - дополнительно будут инициализированы все референсные структуры первого уровня вложенности равного fullInit
 // если !fullInit,      - ни чего не будет инициализировано заранее, а только при первом обращении.
-AkelPad.Include("log.js")
+// AkelPad.Include("log.js")
 
 function makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields){
         if (!oStruct) oStruct = {}
@@ -341,26 +341,35 @@ function test_getStructsMetadata(){
     
     //PrintLog(oStructures)
 }
-//AkelPad.Include("log.js")
-//makeStructWrapperFunctions()
-// Создание JS-функций - фабрик врапперов структур
-// если выделен текст функция парсит только выделение
+//test_makeStructWrapperFunctions()
+function test_makeStructWrapperFunctions(){
+    AkelPad.Include("log.js")
+    if (AkelPad.IsInclude()) WScript.Quit()
+    var aWrpFnList = makeStructWrapperFunctions()
+    for(var i = 0; i < aWrpFnList; ++i){
+        PrintLog(aWrpFnList(i))
+    }
+}
+// Создание JS-функций - фабрик объектов-врапперов структур
+// Функция парсит текст (sText) ищет там определения C-структур и на основе полученных данных из них создает функции-фабрики для JS
+// Если пустой аргумент sText, nj функция парсит выделенный текст активной вкладки
 // если ни чего не выделено, парсится вся страница
-function makeStructWrapperFunctions(){    
+function makeStructWrapperFunctions(sText){    
     //AkelPad.Include("log.js")
     //if (AkelPad.IsInclude()) return
     try{
-        var selStart = AkelPad.GetSelStart()
-        var selEnd = AkelPad.GetSelEnd()
-        if (selStart === selEnd) {selStart = 0; selEnd = -1}
-        var sText = AkelPad.GetTextRange(selStart, selEnd)      // получаем текст с активной вкладки
-        
-        var oStopList = getExistedStructWrappersList(sText)     // ищем уже имеющиеся функции-врапперы
-        var oIncludList = getAllIncludes(sText), fileName
-        for(fileName in oIncludList){                           // продолжаем искать в инклюдах
-            getExistedStructWrappersList(oIncludList[fileName], oStopList)
+        if (!sText){
+            var selStart = AkelPad.GetSelStart()
+            var selEnd = AkelPad.GetSelEnd()
+            if (selStart === selEnd) {selStart = 0; selEnd = -1}    // если ни чего не выбрано будет обработан весь текст активной вкладки
+            sText = AkelPad.GetTextRange(selStart, selEnd)      // получаем текст     
         }
-        var oStructs = getStructsMetadata(sText, 0, oStopList)  // получаем данные о структурах из текста
+        var oStopList = getExistedStructWrappersList(sText)     // ищем уже имеющиеся функции-врапперы в тексте (sText)
+        var oIncludList = getAllIncludes(sText), fileName
+        for(fileName in oIncludList){                           // продолжаем искать в инклюдах, найденных текстах, 
+            getExistedStructWrappersList(oIncludList[fileName], oStopList) //и инклюдах, найденных в самих инклюдах (рекурсивно)
+        }
+        var oStructs = getStructsMetadata(sText, 0, oStopList)  // получаем данные о структурах из текста (sText)
         
         var structName
         var aOut = [], maxCnt = -1, i = 0
@@ -369,8 +378,8 @@ function makeStructWrapperFunctions(){
             delete oStruct.fieldsText; delete oStruct.name; delete oStruct.alignSize32; delete oStruct.alignSize64
             var offsets32 = oStruct.offsets32; delete oStruct.offsets32
             var offsets64 = oStruct.offsets64; delete oStruct.offsets64
-            var offsets32[0] = oStruct.size32; delete oStruct.size32
-            var offsets64[0] = oStruct.size64; delete oStruct.size64
+            offsets32[0] = oStruct.size32; delete oStruct.size32
+            offsets64[0] = oStruct.size64; delete oStruct.size64
             //offsets32.splice(0, 1); offsets64.splice(0, 1)           
             /*function AENTEXTCHANGEwrp(pStruct, oStruct, fullInit){
                 var aOffsets = (_X64)?[128,32,80,104,108,112]:[68,16,40,52,56,60]
@@ -412,6 +421,7 @@ function makeStructWrapperFunctions(){
                 maxCnt += 10
                 aOut.realloc(maxCnt)
             }
+            PrintLog(sFunc)//; WScript.Quit()
             aOut[i++] = sFunc
         }
         aOut.realloc(i)
