@@ -100,13 +100,19 @@ function testGetHotkeyProc(){
     PrintLog(GetHotkeyProc(265))
 }
 function GetHotkeyProc(wHotkey){
-    if(!wHotkey) wHotkey = 265 // Shift + Tab
-    var wszHotkeyOwner = makeStrBuff(260) // Имя процедуры, назначенной на клавишу
-    var pwszHotkeyOwner = StrPtr(wszHotkeyOwner)
-    if (AkelPad.SendMessage(hMainWnd, 1338/*AKD_CHECKHOTKEY*/, wHotkey, pwszHotkeyOwner)){
-        var pfElement = AkelPad.SendMessage(hMainWnd, 1331/*AKD_DLLFINDW*/, pwszHotkeyOwner, 0)
-        if (pfElement) return PLUGINFUNCTIONwrp(pfElement).PluginProc() 
-    } 
+    var opf = PLUGINFUNCTIONwrp()
+    return (GetHotkeyProc = function (wHotkey){
+        if(!wHotkey) wHotkey = 265 // Shift + Tab
+        var wszHotkeyOwner = makeStrBuff(260) // Буфер для имени процедуры, назначенной на клавишу
+        var pwszHotkeyOwner = StrPtr(wszHotkeyOwner)
+        if (AkelPad.SendMessage(hMainWnd, 1338/*AKD_CHECKHOTKEY*/, wHotkey, pwszHotkeyOwner)){
+            var pfElement = AkelPad.SendMessage(hMainWnd, 1331/*AKD_DLLFINDW*/, pwszHotkeyOwner, 0)
+            if (pfElement) {
+                opf.pStructSet(pfElement)
+                return opf.PluginProc()
+            } 
+        }
+    })(wHotkey) 
 }
 
 /*typedef struct {            // смещения (x64/x86) 

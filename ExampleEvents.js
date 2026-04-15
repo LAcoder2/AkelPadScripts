@@ -41,16 +41,16 @@ function TestEvents(){
         PrintLog(1)
         oTC = AENTEXTCHANGEwrp()
         //oTI = AENTEXTINSERTwrp()
-        startEvents(0x802/*AEN_SETFOCUS*/, OnSetFocus,
-                    0x81C/*AEN_MODIFY*/, OnChangeModifySatus,
-                    0x81D/*AEN_SELCHANGING*/, OnSelChanging,
-                    0x81E/*AEN_SELCHANGED*/, OnSelChanged,
-                    0x81F/*AEN_TEXTCHANGING*/, OnTextChanging,
-                    0x820/*AEN_TEXTINSERTBEGIN*/, OnTextInsertBegin,
-                    0x821/*AEN_TEXTINSERTEND*/, OnTextInsertEnd,
-                    0x822/*AEN_TEXTDELETEBEGIN*/, OnTextDeleteBegin,
-                    0x823/*AEN_TEXTDELETEEND*/, OnTextDeleteEnd,
-                    0x824/*AEN_TEXTCHANGED*/, OnTextChanged)
+        startEvents(0x802/*AEN_SETFOCUS*/,          OnSetFocus,
+                    0x81C/*AEN_MODIFY*/,            OnChangeModifySatus,
+                    0x81D/*AEN_SELCHANGING*/,       OnSelChanging,
+                    0x81E/*AEN_SELCHANGED*/,        OnSelChanged,
+                    0x81F/*AEN_TEXTCHANGING*/,      OnTextChanging,
+                    0x820/*AEN_TEXTINSERTBEGIN*/,   OnTextInsertBegin,
+                    0x821/*AEN_TEXTINSERTEND*/,     OnTextInsertEnd,
+                    0x822/*AEN_TEXTDELETEBEGIN*/,   OnTextDeleteBegin,
+                    0x823/*AEN_TEXTDELETEEND*/,     OnTextDeleteEnd,
+                    0x824/*AEN_TEXTCHANGED*/,       OnTextChanged)
     } catch(e){
         PrintLog('TestEvents error: \n' + e.message)
     }
@@ -206,12 +206,12 @@ function OnTextInsertBegin(lParam){
 }
 function OnTextInsertEnd(lParam){              
     try {        
-        oTI = AENTEXTINSERTwrp()                        // предварительная инициализация данных функции
+        oTI = AENTEXTINSERTwrp()                            // предварительная инициализация данных функции
         oBI = BLOCKINFOwrp()
         return (OnTextInsertEnd = function (lParam){
             oTI.pStructSet(lParam)
-            if (oTI.dwType() === 0x100/*AETCT_CHAR*/){  // Введен один символ
-                if (oTI.wpTextRef(4/*DT_WORD*/) === 46){        // Это точка
+            if (oTI.dwType() === 0x100/*AETCT_CHAR*/){      // Введен один символ
+                if (oTI.wpTextRef(4/*DT_WORD*/) === 46){    // Это точка
                     //PrintLog('Вы вставили точку!')
                     
                 }
