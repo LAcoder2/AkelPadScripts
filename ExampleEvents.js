@@ -211,7 +211,7 @@ function OnTextInsertEnd(lParam){
         return (OnTextInsertEnd = function (lParam){
             oTI.pStructSet(lParam)
             if (oTI.dwType() === 0x100/*AETCT_CHAR*/){  // Введен один символ
-                if (oTI.wpTextRef(4, 1) === 46){        // Это точка
+                if (oTI.wpTextRef(4/*DT_WORD*/) === 46){        // Это точка
                     //PrintLog('Вы вставили точку!')
                     
                 }
