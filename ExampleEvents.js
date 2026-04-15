@@ -35,20 +35,25 @@ if (!stopEvents())
 var nModifiedLine   // номер последней модифицированной строки, которая обрабатывается после перехода курсора в другую строку
 var oTC             // объект-враппер структуры AENTEXTCHANGE
 function TestEvents(){ 
-//    PrintLog("TestEvents")   
-    nModifiedLine = -1
-    oTC = makeAENTEXTCHANGEwrp()
-    oTI = makeAENTEXTINSERTwrp()
-    startEvents(0x802/*AEN_SETFOCUS*/, OnSetFocus,
-                0x81C/*AEN_MODIFY*/, OnChangeModifySatus,
-                0x81D/*AEN_SELCHANGING*/, OnSelChanging,
-                0x81E/*AEN_SELCHANGED*/, OnSelChanged,
-                0x81F/*AEN_TEXTCHANGING*/, OnTextChanging,
-                0x820/*AEN_TEXTINSERTBEGIN*/, OnTextInsertBegin,
-                0x821/*AEN_TEXTINSERTEND*/, OnTextInsertEnd,
-                0x822/*AEN_TEXTDELETEBEGIN*/, OnTextDeleteBegin,
-                0x823/*AEN_TEXTDELETEEND*/, OnTextDeleteEnd,
-                0x824/*AEN_TEXTCHANGED*/, OnTextChanged)
+    //PrintLog("TestEvents")   
+    try{
+        nModifiedLine = -1
+        PrintLog(1)
+        oTC = AENTEXTCHANGEwrp()
+        //oTI = AENTEXTINSERTwrp()
+        startEvents(0x802/*AEN_SETFOCUS*/, OnSetFocus,
+                    0x81C/*AEN_MODIFY*/, OnChangeModifySatus,
+                    0x81D/*AEN_SELCHANGING*/, OnSelChanging,
+                    0x81E/*AEN_SELCHANGED*/, OnSelChanged,
+                    0x81F/*AEN_TEXTCHANGING*/, OnTextChanging,
+                    0x820/*AEN_TEXTINSERTBEGIN*/, OnTextInsertBegin,
+                    0x821/*AEN_TEXTINSERTEND*/, OnTextInsertEnd,
+                    0x822/*AEN_TEXTDELETEBEGIN*/, OnTextDeleteBegin,
+                    0x823/*AEN_TEXTDELETEEND*/, OnTextDeleteEnd,
+                    0x824/*AEN_TEXTCHANGED*/, OnTextChanged)
+    } catch(e){
+        PrintLog('TestEvents error: \n' + e.message)
+    }
 }
 
 /* Описание структуры AENTEXTCHANGE и всех входящих в нее структур  
@@ -99,7 +104,7 @@ typedef struct {            // смещения (x64/x86)
 var nPrevSelStart, nPrevSelEnd, sPrevSelText, InsertFlag, MoveFlag, DeleteFlag //, nCurrentLine     
 
 function OnSetFocus(lParam){
-    PrintLog("OnSetFocus") 
+    //PrintLog("OnSetFocus") 
     hWndEdit = AkelPad.GetEditWnd()  //Получаем хэндл текущего окна/вкладки
     
     if (getSyntaxFile(hWndEdit) === "js.coder"){
@@ -110,10 +115,15 @@ function OnSetFocus(lParam){
         PrintLog("В этом окне не  JScript, отключаем автоматическую обработку ввода") 
     }           
 }
-function OnChangeModifySatus(lParam) {PrintLog("AEN_MODIFY");} 
-function OnSelChanging(lParam){/*PrintLog("Начало выделения");*/}   
+function OnChangeModifySatus(lParam) {
+    //PrintLog("AEN_MODIFY")
+} 
+function OnSelChanging(lParam){
+    /*PrintLog("Начало выделения");*/
+}   
 function OnSelChanged(lParam){
-//    PrintLog("Окончание выделения")
+    //PrintLog("Окончание выделения")
+    return
     var nLine = getLineFromChar(AkelPad.GetSelStart()) 
     if (nModifiedLine > -1){ 
         if(nModifiedLine !== nLine) {
@@ -124,7 +134,8 @@ function OnSelChanged(lParam){
 }
 
 function OnTextChanging(lParam){
-    PrintLog("Перед изменением")
+    //PrintLog("Перед изменением")
+    return
     oTC.pStructSet(lParam)
     var dwType = oTC.dwType()
     var bColumnSel = oTC.bColumnSel()
@@ -183,6 +194,7 @@ function OnTextChanging(lParam){
 }
 
 function OnTextInsertBegin(lParam){
+    return
     try{
     PrintLog("Перед вставкой")
     oTI.pStructSet(lParam)
@@ -192,40 +204,55 @@ function OnTextInsertBegin(lParam){
         PrintLog(e.message)
     }
 }
-function OnTextInsertEnd(lParam){              //111fszzfsz g
-    PrintLog("После вставки")    
-    var nCurSelStart = AkelPad.GetSelStart()
-    return 
-    PrintLog(nPrevSelStart + " " + nCurSelStart)
-    try{
-      if (InsertFlag){
-          var sInsText = AkelPad.GetTextRange(nPrevSelStart, nCurSelStart)
-          if (sPrevSelText.length)
-              PrintLog("  Вы заменили \n\"" + sPrevSelText + "\" на \"" + sInsText +"\"")
-          else       
-              PrintLog("  Вы вставили \n\"" + sInsText +"\"")
-          InsertFlag = false     
-//      }else if(MoveFlag){
-//          sInsText = AkelPad.GetSelText()
-//          PrintLog(sInsText.length)
-//          PrintLog("  Вы переместили \"" + sPrevSelText + "\"")
-//          MoveFlag = false
-      }
-    }catch(e){
-        PrintLog(e.description)
+function OnTextInsertEnd(lParam){              
+    try {        
+        oTI = AENTEXTINSERTwrp()                        // предварительная инициализация данных функции
+        oBI = BLOCKINFOwrp()
+        return (OnTextInsertEnd = function (lParam){
+            oTI.pStructSet(lParam)
+            if (oTI.dwType() === 0x100/*AETCT_CHAR*/){  // Введен один символ
+                if (oTI.wpTextRef(4, 1) === 46){        // Это точка
+                    //PrintLog('Вы вставили точку!')
+                    
+                }
+            }
+        })(lParam)    
+    } catch(e) {
+        PrintLog('OnTextInsertEnd error: \n' + e.description)
     }
 }
-function OnTextDeleteBegin(lParam){
-    PrintLog("Перед удалением");
+//PrintLog("После вставки")     
+/*//        var nCurSelStart = AkelPad.GetSelStart()
+//        PrintLog(nPrevSelStart + " " + nCurSelStart)
+//        if (InsertFlag){
+//            var sInsText = AkelPad.GetTextRange(nPrevSelStart, nCurSelStart)
+//            if (sPrevSelText.length)
+//                PrintLog("  Вы заменили \n\"" + sPrevSelText + "\" на \"" + sInsText +"\"")
+//            else       
+//                PrintLog("  Вы вставили \n\"" + sInsText +"\"")
+//            InsertFlag = false     
+////        }else if(MoveFlag){
+////            sInsText = AkelPad.GetSelText()
+////            PrintLog(sInsText.length)
+////            PrintLog("  Вы переместили \"" + sPrevSelText + "\"")
+////            MoveFlag = false
+//        }
+*/
+
+function OnTextDeleteBegin(lParam){    
+    //PrintLog("Перед удалением")
+    return
     DeleteFlag = true
 }
 function OnTextDeleteEnd(lParam){
-    PrintLog("После удаления")
+    //PrintLog("После удаления")
+    return
     PrintLog("  Удалено: \n\"" + sPrevSelText + "\"")
 }
 
 function OnTextChanged(lParam){
-    PrintLog("После изменения \n ")
+    //PrintLog("После изменения \n ")
+    return
     var nLine = getLineFromChar(AkelPad.GetSelStart()) 
     if(MoveFlag){
           var sMovedText = AkelPad.GetSelText()

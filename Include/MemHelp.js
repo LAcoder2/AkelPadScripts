@@ -23,13 +23,14 @@ function makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields){
         var arSubStructs = [] // массив для хранения данных (и контроля) полей проинициализированных дочерних структур
         //var dictRefs = {}
         var nSize = aOffsets[0]
+        //PrintLog('nSize = ' + nSize + ' fullInit = ' + fullInit)
         
         //--Инициализация свойств, отвечающих за поля структуры--//
         var fnWrpMaker, nOffset = 0, offIter = 0        
-        for (var i = 0; i < aDataFields.length - 2;){
+        for (var i = 0; i < aDataFields.length - 1;){
             var fieldName = aDataFields[i++]
             var nType = aDataFields[i++]
-            
+            //PrintLog(fieldName + ' ' + nType + ' ' + nOffset)
             if (nType === 6){                   // структура, вложенная в основную структуру
                 nCountSubStructs += 2
                 if (nMaxCount < nCountSubStructs) {
@@ -263,10 +264,11 @@ function test_makeStructWrapper(){
     AkelPad.Include("log.js")
     
     // makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
-    var st = makeStructWrapper(0, 0, 0, [34,14,18]/*size, offsets*/,
-                               ["name", 1, 6, /*name, type, [length]*/
-                               "age", 4,
-                               "speciality", 1, 8])
+//    var st = makeStructWrapper(0, 0, 0, [34,14,18]/*size, offsets*/,
+//                               ["name", 1, 6, /*name, type, [length]*/
+//                               "age", 4,
+//                               "speciality", 1, 8])
+    var st = TEST_STRUCTwrp()
     PrintLog("Size = " + st.size())
     
     var sDat = "Сергей \x23 Электрик"
@@ -282,6 +284,15 @@ function test_makeStructWrapper(){
     //PrintLog(st.specialityPtr()) 
     PrintLog((st.agePtr() - st.pStruct()) + "\n" +
              (st.specialityPtr() - st.pStruct()))
+}
+function TEST_STRUCTwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[34,14,18]:[34,14,18]
+    var aDataFields = ['name', 1, 6,
+                       'age', 4,
+                       'speciality', 1, 8]
+    return (TEST_STRUCTwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
 }
 /*typedef struct {            // смещения (x64/x86)
   struct _AELINEDATA *next; // 0/0      Указатель на следующую структуру AELINEDATA.
@@ -344,10 +355,11 @@ function test_getStructsMetadata(){
 //test_makeStructWrapperFunctions()
 function test_makeStructWrapperFunctions(){
     AkelPad.Include("log.js")
-    if (AkelPad.IsInclude()) WScript.Quit()
+    if (AkelPad.IsInclude()) return
     var aWrpFnList = makeStructWrapperFunctions()
-    for(var i = 0; i < aWrpFnList; ++i){
-        PrintLog(aWrpFnList(i))
+    //PrintLog(aWrpFnList)
+    for(var i = 0; i < aWrpFnList.length; ++i){
+        PrintLog(aWrpFnList[i])
     }
 }
 // Создание JS-функций - фабрик объектов-врапперов структур
@@ -369,11 +381,14 @@ function makeStructWrapperFunctions(sText){
         for(fileName in oIncludList){                           // продолжаем искать в инклюдах, найденных текстах, 
             getExistedStructWrappersList(oIncludList[fileName], oStopList) //и инклюдах, найденных в самих инклюдах (рекурсивно)
         }
-        var oStructs = getStructsMetadata(sText, 0, oStopList)  // получаем данные о структурах из текста (sText)
+        //PrintLog(oStopList); WScript.Quit()
+        var oStructs = getStructsMetadata(sText) //, 0, oStopList)  // получаем данные о структурах из текста (sText)
         
         var structName
         var aOut = [], maxCnt = -1, i = 0
         for(structName in oStructs){
+            //PrintLog(structName)
+            if (!oStopList[structName]){} else continue
             var oStruct = oStructs[structName]
             delete oStruct.fieldsText; delete oStruct.name; delete oStruct.alignSize32; delete oStruct.alignSize64
             var offsets32 = oStruct.offsets32; delete oStruct.offsets32
@@ -421,7 +436,7 @@ function makeStructWrapperFunctions(sText){
                 maxCnt += 10
                 aOut.realloc(maxCnt)
             }
-            PrintLog(sFunc)//; WScript.Quit()
+            //PrintLog(sFunc)//; WScript.Quit()
             aOut[i++] = sFunc
         }
         aOut.realloc(i)
@@ -432,12 +447,12 @@ function makeStructWrapperFunctions(sText){
 }
 // получение списка имен структур, для которых уже имеются функции вида "function STRUCT_NAMEwrp("
 function getExistedStructWrappersList(sText, oWrpFnList){
-    //AkelPad.GetAkelDir
-    reWrpFn = /^function (\w+)(?:wrp\()/g //function STRUCT_NAMEwrp(
+    reWrpFn = /^function (\w+)(?:wrp\()/gm //function STRUCT_NAMEwrp(
     if (!oWrpFnList) oWrpFnList = {}
     var match
     while(match = reWrpFn.exec(sText)){
         var structName = match[1]
+        //PrintLog(structName); WScript.Quit()
         if (!oWrpFnList[structName]) oWrpFnList[structName] = true
     }
     return oWrpFnList
@@ -485,7 +500,7 @@ function getAllIncludes(sText, oIncludList){
 //    }
 }
 // Поиск определений C-структур и сбор из них всех данных об этих структурах в словарь объектов с данными
-function getStructsMetadata(sText, oStructs, oStopList){
+function getStructsMetadata(sText, oStructs/*, oStopList*/){
     var reStruct = /(\/[\/\*])?\s*typedef\s+struct(\s+[_\w]+)?\s*\{(.*?)\}\s*(\w+)(.*?[\r\n]+)?/g
     //Данные для getStructData()
     var DT_ANSI         = 0
@@ -512,9 +527,9 @@ function getStructsMetadata(sText, oStructs, oStopList){
     } 
     var reFieldBas = /(struct\s+_)?(\w+)\s+(\*\s*)?(\w+)(\[(\w+)\])?;/gm    //^(\/\/)?\s*   
     
-    getStructsMetadata = function (sText, oStructs, oStopList){      
+    getStructsMetadata = function (sText, oStructs/*, oStopList*/){      
         if (!oStructs) oStructs = {}
-        if (!oStopList) oStopList = {}
+        //if (!oStopList) oStopList = {}
         var match
         while (match = reStruct.exec(sText)){
             //PrintLog(match[0])
@@ -522,7 +537,7 @@ function getStructsMetadata(sText, oStructs, oStopList){
             //PrintLog(structName)
             if (!structName) {WScript.Echo("Не определено имя структуры!"); WScript.Quit();}
             if (!oStructs[structName]){         // отсекаем повторные определения структуры
-            if (!oStopList[structName])     // отсекаем имена структур из стоплиста
+            //if (!oStopList[structName])         // отсекаем имена структур из стоплиста
                 oStructs[structName] = {name: structName, fieldsText: match[3]} 
             }       
         }
@@ -664,11 +679,183 @@ function getStructsMetadata(sText, oStructs, oStopList){
             }
         }    
     }
-    return getStructsMetadata(sText, oStructs, oStopList)        
+    return getStructsMetadata(sText, oStructs/*, oStopList*/)        
 }
 //WScript.Echo(alignOffset(20, 8))
 function alignOffset(nOffset, nTypeSize) {
     //return Math.ceil((nOffset + 1) / nTypeSize) * nTypeSize;
     //return ((((nOffset - 1) / nTypeSize)|0) + 1) * nTypeSize
     return ((nOffset + nTypeSize - 1) & ~(nTypeSize - 1))
+}
+
+
+// ====== Struct-wrappers ====== //
+function AENMHDRwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[32,8,16,24]:[16,4,8,12]
+    var aDataFields = ['hwndFrom', 2,
+                       'idFrom', 2,
+                       'code', 3,
+                       'docFrom', 2]
+    return (AENMHDRwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
+}
+function AENTEXTCHANGEwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[128,32,80,104,108,112]:[68,16,40,52,56,60]
+    var aDataFields = ['hdr', 6, AENMHDRwrp,
+                       'crSel', 6, AECHARRANGEwrp,
+                       'ciCaret', 6, AECHARINDEXwrp,
+                       'dwType', 3,
+                       'bColumnSel', 3,
+                       'crRichSel', 6, CHARRANGE64wrp]
+    return (AENTEXTCHANGEwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
+}
+function AELINEDATAwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[48,8,16,24,28,29,30,32,36,40]:[32,4,8,12,16,17,18,20,24,28]
+    var aDataFields = ['next', 9, AELINEDATAwrp,
+                       'prev', 9, AELINEDATAwrp,
+                       'wpLine', 8,
+                       'nLineLen', 3,
+                       'nLineBreak', 5,
+                       'nLineFlags', 5,
+                       'nReserved', 4,
+                       'nLineWidth', 3,
+                       'nSelStart', 3,
+                       'nSelEnd', 3]
+    return (AELINEDATAwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
+}
+function AECHARINDEXwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[24,8,16]:[12,4,8]
+    var aDataFields = ['nLine', 3,
+                       'lpLine', 9, AELINEDATAwrp,
+                       'nCharInLine', 3]
+    return (AECHARINDEXwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
+}
+function CHARRANGE64wrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[16,8]:[8,4]
+    var aDataFields = ['cpMin', 2,
+                       'cpMax', 2]
+    return (CHARRANGE64wrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
+}
+function AECHARRANGEwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[48,24]:[24,12]
+    var aDataFields = ['ciMin', 6, AECHARINDEXwrp,
+                       'ciMax', 6, AECHARINDEXwrp]
+    return (AECHARRANGEwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
+}
+/*typedef struct {            // смещения (x64/x86)
+  AENMHDR hdr;              // 0/0      Стандартный NMHDR.
+  AECHARRANGE crSel;        // 32/16    Зарезервировано. (выравнивание на 8 байт после 28 байт)
+  AECHARINDEX ciCaret;      // 80/40    Зарезервировано. (28+48=76, выравнивание до 80)
+  DWORD dwType;             // 104/52   См. определения AETCT_*. (80+24=104)
+  const wchar_t *wpText;    // 112/56   Текст для вставки. (104+4=108, выравнивание до 112)
+  UINT_PTR dwTextLen;       // 120/60   Длина текста.
+  int nNewLine;             // 128/64   См. определения AELB_*. (120+8=128)
+  BOOL bColumnSel;          // 132/68   Колоночное выделение.
+  DWORD dwInsertFlags;      // 136/72   См. определения AEINST_*.
+  AECHARRANGE crAkelRange;  // 144/76   Позиция вставки текста или диапазон после вставки. (136+4=140, выравнивание до 144)
+  CHARRANGE64 crRichRange;  // 192/100  Позиция вставки или диапазон после вставки (смещение RichEdit). (144+48=192)
+} AENTEXTINSERT;            // 208/108  Общий размер.*/
+function AENTEXTINSERTwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[208,32,80,104,112,120,128,132,136,144,192]:[108,16,40,52,56,60,64,68,72,76,100]
+    var aDataFields = ['hdr', 6, AENMHDRwrp,
+                       'crSel', 6, AECHARRANGEwrp,
+                       'ciCaret', 6, AECHARINDEXwrp,
+                       'dwType', 3,
+                       'wpText', 8,
+                       'dwTextLen', 2,
+                       'nNewLine', 3,
+                       'bColumnSel', 3,
+                       'dwInsertFlags', 3,
+                       'crAkelRange', 6, AECHARRANGEwrp,
+                       'crRichRange', 6, CHARRANGE64wrp]
+    return (AENTEXTINSERTwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
+}
+function REGROUPwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[192,8,16,24,32,40,48,56,64,72,80,88,96,120,144,152,156,160,164,168,172,176,184]:[108,4,8,12,16,20,24,28,32,36,40,44,48,60,72,76,80,84,88,92,96,100,104]
+    var aDataFields = ['next', 9, REGROUPwrp,
+                       'prev', 9, REGROUPwrp,
+                       'parent', 9, REGROUPwrp,
+                       'firstChild', 9, REGROUPwrp,
+                       'lastChild', 9, REGROUPwrp,
+                       'wpPatStart', 8,
+                       'wpPatEnd', 8,
+                       'nGroupLen', 2,
+                       'wpPatLeft', 8,
+                       'wpPatRight', 8,
+                       'wpStrStart', 8,
+                       'wpStrEnd', 8,
+                       'ciStrStart', 6, AECHARINDEXwrp,
+                       'ciStrEnd', 6, AECHARINDEXwrp,
+                       'nStrLen', 2,
+                       'nMinMatch', 3,
+                       'nMaxMatch', 3,
+                       'nSelfMatch', 3,
+                       'nSelfExec', 3,
+                       'dwFlags', 3,
+                       'nIndex', 3,
+                       'conditionRef', 9, REGROUPwrp,
+                       'dwUserData', 2]
+    return (REGROUPwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
+}
+function STACKREGROUPwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[176,8,16,24,32,40,48,56,64,72,96,120,128,136,160,168,172]:[92,4,8,12,16,20,24,28,32,36,48,60,64,68,80,84,88]
+    var aDataFields = ['first', 9, REGROUPwrp,
+                       'last', 9, REGROUPwrp,
+                       'dwOptions', 3,
+                       'wpDelim', 8,
+                       'wpMaxDelim', 8,
+                       'wpText', 8,
+                       'wpMaxText', 8,
+                       'wpRange', 8,
+                       'wpMaxRange', 8,
+                       'ciRange', 6, AECHARINDEXwrp,
+                       'ciMaxRange', 6, AECHARINDEXwrp,
+                       'ref100', 9, STACKREGROUPwrp,
+                       'wpRootStart', 8,
+                       'ciRootStart', 6, AECHARINDEXwrp,
+                       'nMaxBackward', 2,
+                       'nLastIndex', 3,
+                       'nDeepness', 3]
+    return (STACKREGROUPwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
+}
+function BLOCKINFOwrp(pStruct, oStruct, fullInit){
+    var aOffsets = (_X64)?[120,8,16,20,24,32,36,40,48,56,64,72,80,88,92,96,104,112]:[72,4,8,12,16,20,24,28,32,36,40,44,48,52,56,60,64,68]
+    var aDataFields = ['next', 9, BLOCKINFOwrp,
+                       'prev', 9, BLOCKINFOwrp,
+                       'dwStructType', 3,
+                       'wchFirstLowerChar', 4, 
+                       'wpTitle', 8,
+                       'nTitleLen', 3,
+                       'dwTitleFlags', 3,
+                       'bExactTitle', 3,
+                       'sregTitle', 9, STACKREGROUPwrp,
+                       'master', 9, BLOCKINFOwrp,
+                       'firstHandle', 2,
+                       'lastHandle', 2,
+                       'wpBlock', 8,
+                       'nBlockLen', 3,
+                       'nLinesInBlock', 3,
+                       'hHotSpotStack', 2,
+                       'nHotSpotBlockBegin', 2,
+                       'lpRef', 2]
+    return (BLOCKINFOwrp = function (pStruct, oStruct, fullInit){
+        return makeStructWrapper(pStruct, oStruct, fullInit, aOffsets, aDataFields)
+    })(pStruct, oStruct, fullInit)
 }
